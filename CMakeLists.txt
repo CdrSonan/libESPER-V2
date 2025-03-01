@@ -24,10 +24,10 @@ target_link_libraries(test_esper PRIVATE esper)
 
 # Add multiple tests with different arguments
 set(TEST_ARGS_LIST
-    "arg1"
-    "arg2"
-    "arg3"
-    "arg4"
+    "fft"
+    #"arg2"
+    #"arg3"
+    #"arg4"
 )
 
 foreach(TEST_ARG IN LISTS TEST_ARGS_LIST)
