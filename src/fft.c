@@ -52,28 +52,37 @@ float* _fft_2(float* data, int n, int step, int offset, int sign)
 
 float* _fft_3(float* data, int n, int step, int offset, int sign)
 {
-    float* even = _fft_recurse(data, n / 3, step * 3, offset, sign);
-    float* odd1 = _fft_recurse(data, n / 3, step * 3, offset + step, sign);
-    float* odd2 = _fft_recurse(data, n / 3, step * 3, offset + 2 * step, sign);
     float* result = malloc(sizeof(float) * 2 * n);
-    for (int i = 0; i < n / 3; i++)
+    float* sub1 = _fft_recurse(data, n / 3, step * 3, offset, sign);
+    float* sub2 = _fft_recurse(data, n / 3, step * 3, offset + step, sign);
+    float* sub3 = _fft_recurse(data, n / 3, step * 3, offset + 2 * step, sign);
+
+    for (int k = 0; k < n / 3; k++)
     {
-        float angle1 = 2 * PI * i / n * sign;
-        float angle2 = 2 * PI * 2 * i / n * sign;
+        float angle1 = 2 * PI * k / n * sign;
+        float angle2 = 4 * PI * k / n * sign;
+
         float real1 = cos(angle1);
         float imag1 = sin(angle1);
         float real2 = cos(angle2);
         float imag2 = sin(angle2);
-        result[2 * i] = even[2 * i] + real1 * odd1[2 * i] - imag1 * odd1[2 * i + 1] + real2 * odd2[2 * i] - imag2 * odd2[2 * i + 1];
-        result[2 * i + 1] = even[2 * i + 1] + real1 * odd1[2 * i + 1] + imag1 * odd1[2 * i] + real2 * odd2[2 * i + 1] + imag2 * odd2[2 * i];
-        result[2 * (i + n / 3)] = even[2 * i] - 0.5 * (real1 * odd1[2 * i] + imag1 * odd1[2 * i + 1] + real2 * odd2[2 * i] + imag2 * odd2[2 * i + 1]);
-        result[2 * (i + n / 3) + 1] = even[2 * i + 1] - 0.5 * (-real1 * odd1[2 * i + 1] + imag1 * odd1[2 * i] - real2 * odd2[2 * i + 1] + imag2 * odd2[2 * i]);
-        result[2 * (i + 2 * n / 3)] = even[2 * i] - 0.5 * (real1 * odd1[2 * i] - imag1 * odd1[2 * i + 1] + real2 * odd2[2 * i] - imag2 * odd2[2 * i + 1]);
-        result[2 * (i + 2 * n / 3) + 1] = even[2 * i + 1] - 0.5 * (-real1 * odd1[2 * i + 1] - imag1 * odd1[2 * i] - real2 * odd2[2 * i + 1] - imag2 * odd2[2 * i]);
+
+        float sub2_real = real1 * sub2[2 * k] - imag1 * sub2[2 * k + 1];
+        float sub2_imag = real1 * sub2[2 * k + 1] + imag1 * sub2[2 * k];
+        float sub3_real = real2 * sub3[2 * k] - imag2 * sub3[2 * k + 1];
+        float sub3_imag = real2 * sub3[2 * k + 1] + imag2 * sub3[2 * k];
+
+        result[2 * k] = sub1[2 * k] + sub2_real + sub3_real;
+        result[2 * k + 1] = sub1[2 * k + 1] + sub2_imag + sub3_imag;
+        result[2 * (k + n / 3)] = sub1[2 * k] + sub2_real * (-0.5) - sub2_imag * sqrt(3) / 2 + sub3_real * (-0.5) + sub3_imag * sqrt(3) / 2;
+        result[2 * (k + n / 3) + 1] = sub1[2 * k + 1] + sub2_real * sqrt(3) / 2 + sub2_imag * (-0.5) + sub3_real * (-sqrt(3) / 2) + sub3_imag * (-0.5);
+        result[2 * (k + 2 * n / 3)] = sub1[2 * k] + sub2_real * (-0.5) + sub2_imag * sqrt(3) / 2 + sub3_real * (-0.5) - sub3_imag * sqrt(3) / 2;
+        result[2 * (k + 2 * n / 3) + 1] = sub1[2 * k + 1] + sub2_real * (-sqrt(3) / 2) + sub2_imag * (-0.5) + sub3_real * sqrt(3) / 2 + sub3_imag * (-0.5);
     }
-    free(even);
-    free(odd1);
-    free(odd2);
+
+    free(sub1);
+    free(sub2);
+    free(sub3);
     return result;
 }
 
@@ -86,7 +95,7 @@ float* _dft(float* data, int n, int step, int offset, int sign)
         float imag = 0;
         for (int j = 0; j < n; j++)
         {
-            float angle = 2 * PI * i * j / n * sign;
+            float angle = -2 * PI * i * j / n * sign;
             real += data[offset + 2 * j * step] * cos(angle) - data[offset + 2 * j * step + 1] * sin(angle);
             imag += data[offset + 2 * j * step] * sin(angle) + data[offset + 2 * j * step + 1] * cos(angle);
         }
