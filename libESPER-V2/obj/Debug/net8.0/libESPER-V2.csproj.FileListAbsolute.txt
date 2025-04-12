@@ -1,0 +1,13 @@
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\bin\Debug\net8.0\libESPER-V2.deps.json
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\bin\Debug\net8.0\libESPER-V2.dll
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\bin\Debug\net8.0\libESPER-V2.pdb
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.GeneratedMSBuildEditorConfig.editorconfig
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.AssemblyInfoInputs.cache
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.AssemblyInfo.cs
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.csproj.CoreCompileInputs.cache
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.sourcelink.json
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.dll
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\refint\libESPER-V2.dll
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.pdb
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\ref\libESPER-V2.dll
+D:\Nova-Vox\GitHub\libESPER-V2\libESPER-V2\obj\Debug\net8.0\libESPER-V2.csproj.AssemblyReference.cache
