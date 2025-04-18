@@ -345,13 +345,17 @@ namespace libESPER_V2
         public readonly ESPERAudioConfig config;
         public readonly int length;
         public readonly int compressedLength;
+        public readonly int temporalCompression;
+        public readonly int spectralCompression;
 
         // Constructor
-        public CompressedESPERAudio(int length, int compressedLength, ESPERAudioConfig config)
+        public CompressedESPERAudio(int length, int temporalCompression, int spectralCompression, ESPERAudioConfig config)
         {
             this.config = config;
             this.length = length;
-            this.compressedLength = compressedLength;
+            this.compressedLength = length / temporalCompression;
+            this.temporalCompression = temporalCompression;
+            this.spectralCompression = spectralCompression;
             this.data = Matrix<Half>.Build.Dense(compressedLength, config.FrameSize(), (Half)0.0f);
         }
         public CompressedESPERAudio(CompressedESPERAudio audio)
@@ -359,6 +363,8 @@ namespace libESPER_V2
             this.config = audio.config;
             this.length = audio.length;
             this.compressedLength = audio.compressedLength;
+            this.temporalCompression = audio.temporalCompression;
+            this.spectralCompression = audio.spectralCompression;
             this.data = audio.data.Clone();
         }
 

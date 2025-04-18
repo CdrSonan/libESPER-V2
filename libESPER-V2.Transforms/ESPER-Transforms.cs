@@ -10,24 +10,24 @@ namespace libESPER_V2.Transforms
 {
     class ESPER_Transforms
     {
-        public ESPERAudio forward(Vector<float> x, ESPERAudioConfig config)
+        public static ESPERAudio Forward(Vector<float> x, ESPERAudioConfig config)
         {
             int length = x.Count;
             ESPERAudio output = new ESPERAudio(length, config);
             return output;
         }
 
-        public ESPERAudio forwardApprox(Vector<float> x, ESPERAudioConfig config)
+        public static ESPERAudio ForwardApprox(Vector<float> x, ESPERAudioConfig config)
         {
             int length = x.Count;
             ESPERAudio output = new ESPERAudio(length, config);
             return output;
         }
 
-        public Vector<float> inverse(ESPERAudio x)
+        public static Vector<float> Inverse(ESPERAudio x)
         {
-            int length = x.Length;
-            ESPERAudio output = new ESPERAudio(length, x.Config);
+            int length = x.length;
+            Vector<float> output = Vector<float>.Build.Dense(length, 0);
             return output;
         }
     }

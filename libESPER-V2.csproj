@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <Folder Include="libESPER-V2.Effects\" />
+    <Floder Include="libESPER-V2.Transforms\" />
   </ItemGroup>
 
 </Project>
