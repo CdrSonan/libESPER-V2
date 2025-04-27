@@ -32,25 +32,6 @@ namespace libESPER_V2.Utils
                 throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
             nodes.RemoveAt(index);
         }
-        public void build(int distanceLimit, Func<long, long, double> distanceFunc)
-        {
-            for (int i = 0; i < nodes.Count; i++)
-            {
-                if (nodes[i].isRoot)
-                {
-                    continue;
-                }
-                int limit = Math.Max(0, i - distanceLimit);
-                for (int j = i - 1; j >= limit; j--)
-                {
-                    double distance = distanceFunc(nodes[i].id, nodes[j].id);
-                    if (nodes[j].value + distance < nodes[i].value)
-                    {
-                        nodes[i].parent = nodes[j];
-                    }
-                }
-            }
-        }
         public List<long> trace()
         {
             int currentIndex = nodes.Count - 1;
@@ -76,27 +57,12 @@ namespace libESPER_V2.Utils
             return path;
         }
     }
-    public class Node
+    public class Node(long id, bool isRoot, bool isLeaf)
     {
-        public long id;
-        public double value;
+        public long id = id;
+        public double value = 0;
         public Node? parent;
-        public bool isRoot;
-        public bool isLeaf;
-
-        public Node(bool isRoot, bool isLeaf)
-        {
-            this.value = 0;
-            this.parent = null;
-            this.isRoot = isRoot;
-            this.isLeaf = isLeaf;
-        }
-        public Node(double value, Node parent, bool isRoot, bool isLeaf)
-        {
-            this.value = value;
-            this.parent = parent;
-            this.isRoot = isRoot;
-            this.isLeaf = isLeaf;
-        }
+        public bool isRoot = isRoot;
+        public bool isLeaf = isLeaf;
     }
 }
