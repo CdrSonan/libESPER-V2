@@ -15,7 +15,6 @@
     <Folder Include="libESPER-V2.Effects\" />
     <Floder Include="libESPER-V2.Transforms\" />
     <Folder Include="libESPER-V2.Transforms\libESPER-V2.Transforms.Internal\" />
-    <Folder Include="libESPER-V2.Utils\" />
   </ItemGroup>
 
 </Project>

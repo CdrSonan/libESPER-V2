@@ -32,7 +32,7 @@ namespace libESPER_V2.Utils
                 throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
             nodes.RemoveAt(index);
         }
-        public List<long> trace()
+        public List<int> trace()
         {
             int currentIndex = nodes.Count - 1;
             int startIndex = nodes.Count - 1;
@@ -45,7 +45,7 @@ namespace libESPER_V2.Utils
                     startIndex = currentIndex;
                 }
             }
-            List<long> path = new();
+            List<int> path = new();
             Node currentNode = nodes[startIndex];
             while (!currentNode.isRoot)
             {
@@ -57,9 +57,9 @@ namespace libESPER_V2.Utils
             return path;
         }
     }
-    public class Node(long id, bool isRoot, bool isLeaf)
+    public class Node(int id, bool isRoot, bool isLeaf)
     {
-        public long id = id;
+        public int id = id;
         public double value = 0;
         public Node? parent;
         public bool isRoot = isRoot;
