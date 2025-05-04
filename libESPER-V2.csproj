@@ -14,7 +14,6 @@
   <ItemGroup>
     <Folder Include="Effects\" />
     <Folder Include="Transforms\" />
-    <Folder Include="Transforms\Internal\" />
   </ItemGroup>
 
 </Project>

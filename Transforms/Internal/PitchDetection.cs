@@ -1,10 +1,11 @@
 ﻿using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
 using libESPER_V2.Core;
+using MathNet.Numerics.Interpolation;
 
 namespace libESPER_V2.Transforms.Internal
 {
-    class PitchDetection(Vector<float> audio, float oscillatorDamping, int distanceLimit)
+    class PitchDetection(Vector<float> audio, EsperAudioConfig config, float oscillatorDamping, int distanceLimit)
     {
         private Vector<float>? _oscillatorProxy;
         private readonly Dag _graph = new();
@@ -126,26 +127,17 @@ namespace libESPER_V2.Transforms.Internal
                     _pitchMarkerValidity[i] = true;
                 }
                 float validError = 0;
-                Vector<float> scale = Vector<float>.Build.Dense(sectionSize);
-                for (int j = 0; j < sectionSize; j++)
-                {
-                    scale[j] = j;
-                }
-                Vector<float> previousScale = Vector<float>.Build.Dense(previousSize);
-                for (int j = 0; j < previousSize; j++)
-                {
-                    previousScale[j] = j * ((float)sectionSize / previousSize);
-                }
-                Vector<float> nextScale = Vector<float>.Build.Dense(nextSize);
-                for (int j = 0; j < nextSize; j++)
-                {
-                    nextScale[j] = j * ((float)sectionSize / nextSize);
-                }
+                Vector<double> previousScale = Vector<double>.Build.Dense(previousSize, (j) => j * ((float)sectionSize / previousSize));
+                Vector<double> nextScale = Vector<double>.Build.Dense(nextSize, (j) => j * ((float)sectionSize / nextSize));
                 Vector<float> section = _oscillatorProxy.SubVector(_graph.Nodes[i].Id, sectionSize);
-                Vector<float> previousSection = _oscillatorProxy.SubVector(_graph.Nodes[i - 1].Id, previousSize);
-                Vector<float> nextSection = _oscillatorProxy.SubVector(_graph.Nodes[i + 1].Id, nextSize);
-                Vector<float> previousInterpolated = Interpolation.Interpolate(previousScale, previousSection, scale);
-                Vector<float> nextInterpolated = Interpolation.Interpolate(nextScale, nextSection, scale);
+                Vector<double> previousSection = Vector<double>.Build.Dense(previousSize);
+                _oscillatorProxy.SubVector(_graph.Nodes[i - 1].Id, previousSize).MapConvert(x => (double)x, previousSection);
+                Vector<double> nextSection = Vector<double>.Build.Dense(nextSize);
+                _oscillatorProxy.SubVector(_graph.Nodes[i + 1].Id, nextSize).MapConvert(x => (double)x, nextSection);
+                CubicSpline previousInterpolator = CubicSpline.InterpolatePchip(previousScale, previousSection);
+                Vector<float> previousInterpolated = Vector<float>.Build.Dense(previousSize, (j) => (float)previousInterpolator.Interpolate(j));
+                CubicSpline nextInterpolator = CubicSpline.InterpolatePchip(nextScale, nextSection);
+                Vector<float> nextInterpolated = Vector<float>.Build.Dense(nextSize, (j) => (float)previousInterpolator.Interpolate(j));
                 for (int j = 0; j < sectionSize; j++)
                 {
                     validError += (float)Math.Pow(section[j] - (previousInterpolated[j] + nextInterpolated[j]) / 2, 2);
@@ -166,7 +158,7 @@ namespace libESPER_V2.Transforms.Internal
                 }
             }
         }
-        public List<int> PitchMarkers(EsperAudioConfig config, float? expectedPitch)
+        public List<int> PitchMarkers(float? expectedPitch)
         {
             if (_pitchMarkers == null)
             {
@@ -189,9 +181,9 @@ namespace libESPER_V2.Transforms.Internal
             int nextDelta = _pitchMarkers[index + 2] - _pitchMarkers[index + 1];
             return (previousDelta + nextDelta) / 2;
         }
-        public Vector<float> PitchDeltas(EsperAudioConfig config, float? expectedPitch)
+        public Vector<float> PitchDeltas(float? expectedPitch)
         {
-            _pitchMarkers = PitchMarkers(config, expectedPitch);
+            _pitchMarkers = PitchMarkers(expectedPitch);
             int cursor = 0;
             int batchSize = (config.NUnvoiced - 1) * 2 / 3;
             int batches = (int)Math.Ceiling((double)(_oscillatorProxy.Count / batchSize));

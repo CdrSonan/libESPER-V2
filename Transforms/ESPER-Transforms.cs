@@ -1,14 +1,37 @@
 ﻿using libESPER_V2.Core;
+using libESPER_V2.Transforms.Internal;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms
 {
-    class EsperTransforms
+    public class EsperForwardConfig
     {
-        public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config)
+        public float PitchOscillatorDamping;
+        public int PitchDistanceLimit;
+        public float? ExpectedPitch;
+
+        public EsperForwardConfig(float? pitchOscillatorDamping, int? pitchDistanceLimit, float? expectedPitch)
         {
-            int length = x.Count;
-            EsperAudio output = new EsperAudio(length, config);
+            this.PitchOscillatorDamping = pitchOscillatorDamping == null ? 0.0f : pitchOscillatorDamping.Value;
+            this.PitchDistanceLimit = pitchDistanceLimit == null ? 0 : pitchDistanceLimit.Value;
+            this.ExpectedPitch = expectedPitch;
+        }
+    }
+    public class EsperTransforms
+    {
+        public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config, EsperForwardConfig forwardConfig)
+        {
+            int batchSize = (config.NUnvoiced - 1) * 2 / 3;
+            int batches = (int)Math.Ceiling((double)(x.Count / batchSize));
+            EsperAudio output = new EsperAudio(batches, config);
+            
+            PitchDetection pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping, forwardConfig.PitchDistanceLimit);
+            List<int> markers = pitchDetection.PitchMarkers(forwardConfig.ExpectedPitch);
+            Vector<float> deltas = pitchDetection.PitchDeltas(forwardConfig.ExpectedPitch);
+            output.SetPitch(deltas);
+            
+            
+            
             return output;
         }
 
