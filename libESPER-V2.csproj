@@ -12,9 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="libESPER-V2.Effects\" />
-    <Floder Include="libESPER-V2.Transforms\" />
-    <Folder Include="libESPER-V2.Transforms\libESPER-V2.Transforms.Internal\" />
+    <Folder Include="Effects\" />
+    <Folder Include="Transforms\" />
+    <Folder Include="Transforms\Internal\" />
   </ItemGroup>
 
 </Project>

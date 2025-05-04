@@ -1,28 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using MathNet.Numerics.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Utils
 {
     public class InterpolationPlan
     {
-        public Vector<float> x;
-        public Vector<float> xi;
-        public Vector<int> idxs;
-        public Vector<float> dx;
-        public Matrix<float> h;
+        public Vector<float> X;
+        public Vector<float> Xi;
+        public Vector<int> Idxs;
+        public Vector<float> Dx;
+        public Matrix<float> H;
         public InterpolationPlan(Vector<float> x, Vector<float> xi)
         {
-            this.x = x;
-            this.xi = xi;
+            this.X = x;
+            this.Xi = xi;
             int len = x.Count;
             int lenXi = xi.Count;
-            idxs = Vector<int>.Build.Dense(lenXi);
-            dx = Vector<float>.Build.Dense(lenXi);
+            Idxs = Vector<int>.Build.Dense(lenXi);
+            Dx = Vector<float>.Build.Dense(lenXi);
             int i = 0;
             int j = 0;
             while (i < lenXi && j < len - 1)
@@ -33,22 +27,22 @@ namespace libESPER_V2.Utils
                 }
                 else
                 {
-                    idxs[i] = j;
+                    Idxs[i] = j;
                     i++;
                 }
             }
             while (i < lenXi)
             {
-                idxs[i] = j;
+                Idxs[i] = j;
                 i++;
             }
             Vector<float> hBase = Vector<float>.Build.Dense(lenXi);
             for (int k = 0; k < lenXi; k++) {
-                int offset = idxs[k];
-                dx[k] = x[offset + 1] - x[offset];
-                hBase[k] = (xi[k] - x[offset]) / dx[k];
+                int offset = Idxs[k];
+                Dx[k] = x[offset + 1] - x[offset];
+                hBase[k] = (xi[k] - x[offset]) / Dx[k];
             }
-            h = HPoly(hBase, lenXi);
+            H = HPoly(hBase, lenXi);
         }
         private static Matrix<float> HPoly(Vector<float> input, int length)
         {
@@ -75,19 +69,19 @@ namespace libESPER_V2.Utils
         }
         public static Vector<float> ExecutePlan(InterpolationPlan plan, Vector<float> y)
         {
-            if (plan.x.Count != y.Count)
+            if (plan.X.Count != y.Count)
                 throw new ArgumentException("x (specified at plan creation) and y must have the same length");
-            Vector<float> result = Vector<float>.Build.Dense(plan.xi.Count);
-            for (int i = 0; i < plan.xi.Count; i++)
+            Vector<float> result = Vector<float>.Build.Dense(plan.Xi.Count);
+            for (int i = 0; i < plan.Xi.Count; i++)
             {
-                int offset = plan.idxs[0];
-                float m = meanHelper(plan.x, y, offset);
-                float mPlus = meanHelper(plan.x, y, offset + 1);
-                result[i] = plan.h[0, i] * y[offset] + plan.h[1, i] * m * plan.dx[i] + plan.h[2, i] * y[offset + 1] + plan.h[3, i] * mPlus * plan.dx[i];
+                int offset = plan.Idxs[0];
+                float m = MeanHelper(plan.X, y, offset);
+                float mPlus = MeanHelper(plan.X, y, offset + 1);
+                result[i] = plan.H[0, i] * y[offset] + plan.H[1, i] * m * plan.Dx[i] + plan.H[2, i] * y[offset + 1] + plan.H[3, i] * mPlus * plan.Dx[i];
             }
             return result;
         }
-        private static float meanHelper(Vector<float> x, Vector<float> y, int idx)
+        private static float MeanHelper(Vector<float> x, Vector<float> y, int idx)
         {
             if (idx == 0)
                 idx = 1;
