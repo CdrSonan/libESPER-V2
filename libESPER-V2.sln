@@ -5,6 +5,8 @@ VisualStudioVersion = 17.13.35825.156 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libESPER-V2", "libESPER-V2.csproj", "{E31373A3-345A-4884-8EBF-E23F727D9097}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libESPER-V2.Tests", "..\libESPER-V2.Tests\libESPER-V2.Tests.csproj", "{D7F7539F-D7F4-4ED1-A4E8-B8C528E3234E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{E31373A3-345A-4884-8EBF-E23F727D9097}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E31373A3-345A-4884-8EBF-E23F727D9097}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E31373A3-345A-4884-8EBF-E23F727D9097}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7F7539F-D7F4-4ED1-A4E8-B8C528E3234E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7F7539F-D7F4-4ED1-A4E8-B8C528E3234E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7F7539F-D7F4-4ED1-A4E8-B8C528E3234E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7F7539F-D7F4-4ED1-A4E8-B8C528E3234E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
