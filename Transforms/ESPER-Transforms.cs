@@ -6,8 +6,8 @@ namespace libESPER_V2.Transforms;
 
 public class EsperForwardConfig(float? pitchOscillatorDamping, int? pitchDistanceLimit, float? expectedPitch)
 {
-    public readonly int PitchDistanceLimit = pitchDistanceLimit ?? 0;
-    public readonly float PitchOscillatorDamping = pitchOscillatorDamping ?? 0.0f;
+    public readonly int PitchDistanceLimit = pitchDistanceLimit ?? 10;
+    public readonly float PitchOscillatorDamping = pitchOscillatorDamping ?? 0.1f;
     public float? ExpectedPitch = expectedPitch;
 }
 
@@ -15,8 +15,8 @@ public class EsperTransforms
 {
     public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config, EsperForwardConfig forwardConfig)
     {
-        var batchSize = (config.NUnvoiced - 1) * 2 / 3;
-        var batches = (int)Math.Ceiling((float)x.Count / batchSize);
+        var batchSize = (config.NUnvoiced - 1) * 2;
+        var batches = x.Count / batchSize;
         var output = new EsperAudio(batches, config);
 
         var pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping,
@@ -25,7 +25,14 @@ public class EsperTransforms
         var deltas = pitchDetection.PitchDeltas(forwardConfig.ExpectedPitch);
         output.SetPitch(deltas);
 
-
+        var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
+        var coeffs = Resolve.ToFourier(pitchSync);
+        var smoothed = Resolve.Smoothing(coeffs);
+        var voiced = Resolve.ToVoiced(smoothed, pitchDetection, batchSize, batches);
+        output.SetVoicedAmps(voiced.SubMatrix(0, voiced.RowCount, 0, config.NVoiced));
+        output.SetVoicedPhases(voiced.SubMatrix(0, voiced.RowCount, config.NVoiced, config.NVoiced));
+        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, batchSize, batches);
+        output.SetUnvoiced(unvoiced);
         return output;
     }
 

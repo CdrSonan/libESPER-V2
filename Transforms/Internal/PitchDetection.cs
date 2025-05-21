@@ -10,7 +10,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
     private readonly Dag _graph = new();
     private Vector<float>? _oscillatorProxy;
     private List<int>? _pitchMarkers;
-    private List<bool>? _pitchMarkerValidity;
+    private bool[]? _pitchMarkerValidity;
 
 
     private void DrivenOscillator()
@@ -47,13 +47,13 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
         for (var i = 1; i < _graph.Nodes.Count; i++)
         {
             if (_graph.Nodes[i].IsRoot) continue;
-            _graph.Nodes[i].Value = PitchNodeDistance(_graph.Nodes[i].Id, _graph.Nodes[i - 1].Id, expectedPitch, 50,
+            _graph.Nodes[i].Value = PitchNodeDistance(_graph.Nodes[i - 1].Id, _graph.Nodes[i].Id, expectedPitch, 50,
                 edgeThreshold);
             _graph.Nodes[i].Parent = _graph.Nodes[i - 1];
             var limit = Math.Max(0, i - distanceLimit);
             for (var j = i - 2; j >= limit; j--)
             {
-                var distance = PitchNodeDistance(_graph.Nodes[i].Id, _graph.Nodes[j].Id, expectedPitch, 50,
+                var distance = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 50,
                     edgeThreshold);
                 if (_graph.Nodes[j].Value + distance < _graph.Nodes[i].Value)
                 {
@@ -106,15 +106,20 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
 
     private void CheckValidity()
     {
-        _pitchMarkerValidity = new List<bool>(_graph.Nodes.Count - 1);
+        _pitchMarkerValidity = new bool[_graph.Nodes.Count - 1];
         _pitchMarkerValidity[0] = true;
-        _pitchMarkerValidity[^2] = true;
+        _pitchMarkerValidity[^1] = true;
         for (var i = 1; i < _graph.Nodes.Count - 2; i++)
         {
             var sectionSize = _graph.Nodes[i + 1].Id - _graph.Nodes[i].Id;
             var previousSize = _graph.Nodes[i].Id - _graph.Nodes[i - 1].Id;
             var nextSize = _graph.Nodes[i + 2].Id - _graph.Nodes[i + 1].Id;
-            if (previousSize <= sectionSize + 2 || nextSize <= sectionSize + 2) _pitchMarkerValidity[i] = true;
+            if (previousSize <= sectionSize + 2 || nextSize <= sectionSize + 2)
+            {
+                _pitchMarkerValidity[i] = true;
+                continue;
+            }
+
             float validError = 0;
             var previousScale = Vector<double>.Build.Dense(previousSize, j => j * ((float)sectionSize / previousSize));
             var nextScale = Vector<double>.Build.Dense(nextSize, j => j * ((float)sectionSize / nextSize));
@@ -127,7 +132,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             var previousInterpolated =
                 Vector<float>.Build.Dense(previousSize, j => (float)previousInterpolator.Interpolate(j));
             var nextInterpolator = CubicSpline.InterpolatePchip(nextScale, nextSection);
-            var nextInterpolated = Vector<float>.Build.Dense(nextSize, j => (float)previousInterpolator.Interpolate(j));
+            var nextInterpolated = Vector<float>.Build.Dense(nextSize, j => (float)nextInterpolator.Interpolate(j));
             for (var j = 0; j < sectionSize; j++)
                 validError += (float)Math.Pow(section[j] - (previousInterpolated[j] + nextInterpolated[j]) / 2, 2);
             float invalidError = 0;
@@ -135,7 +140,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             {
                 var alternative = _oscillatorProxy[_graph.Nodes[i - 1].Id + j] -
                                   _oscillatorProxy[_graph.Nodes[i + 2].Id - sectionSize + j];
-                invalidError += (float)Math.Pow(alternative / 2, 2);
+                invalidError += (float)Math.Pow(alternative, 2);
             }
 
             if (validError < invalidError)
@@ -160,7 +165,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
         return _pitchMarkers;
     }
 
-    public List<bool> Validity(float? expectedPitch)
+    public bool[] Validity(float? expectedPitch)
     {
         if (_pitchMarkerValidity == null) PitchMarkers(expectedPitch);
         return _pitchMarkerValidity;
@@ -178,28 +183,18 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
     {
         _pitchMarkers = PitchMarkers(expectedPitch);
         var cursor = 0;
-        var batchSize = (config.NUnvoiced - 1) * 2 / 3;
+        var batchSize = (config.NUnvoiced - 1) * 2;
         var batches = (int)Math.Ceiling((double)(_oscillatorProxy.Count / batchSize));
         var pitchDeltas = Vector<float>.Build.Dense(batches);
         for (var i = 0; i < batches; i++)
         {
             while (_pitchMarkers[cursor] <= i * batchSize && cursor < _pitchMarkers.Count) cursor++;
             if (cursor == 0)
-            {
                 pitchDeltas[i] = _pitchMarkers[cursor + 1] - _pitchMarkers[cursor];
-            }
             else if (cursor == _pitchMarkers.Count - 1)
-            {
                 pitchDeltas[i] = _pitchMarkers[cursor] - _pitchMarkers[cursor - 1];
-            }
             else
-            {
-                var delta = GetValidPitchDelta(cursor - 1);
-                if (delta > batchSize)
-                    pitchDeltas[i] = delta;
-                else
-                    pitchDeltas[i] = batchSize;
-            }
+                pitchDeltas[i] = GetValidPitchDelta(cursor - 1);
         }
 
         return pitchDeltas;
