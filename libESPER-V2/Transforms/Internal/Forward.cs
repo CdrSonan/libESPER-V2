@@ -132,41 +132,36 @@ internal class Resolve
     public static Matrix<float> ToVoiced(
         Matrix<Complex32> fourierCoeffs,
         PitchDetection pitchDetection,
-        int batchSize,
-        int nBatches)
+        int stepSize,
+        int batches)
     {
         var markers = pitchDetection.PitchMarkers(null);
         var validity = pitchDetection.Validity(null);
-        var centers = new double[markers.Count - 1];
-        for (var i = 0; i < markers.Count - 1; i++)
-            centers[i] = (double)(markers[i + 1] + markers[i]) / 2;
-        var sections = markers.Count - 1;
-        var output = Matrix<float>.Build.Dense(nBatches, fourierCoeffs.ColumnCount * 2, 0);
-        var currentCenter = 0;
-        for (var i = 0; i < nBatches; i++)
+        var start = 0;
+        var end = 0;
+        var output = Matrix<float>.Build.Dense(batches, fourierCoeffs.ColumnCount * 2, 0);
+        for (var i = 0; i < batches; i++)
         {
-            var pos = i * batchSize;
-            var nCenters = 0;
+            while (start + 1 < markers.Count && markers[start + 1] < i * stepSize) start++;
+            while (end < markers.Count - 1 && markers[end] <= (i + 1) * stepSize) end++;
+            var count = end - start;
             var buffer = Vector<Complex32>.Build.Dense(fourierCoeffs.ColumnCount, 0);
-            while (centers[currentCenter] < pos)
+            if (count == 0)
             {
-                if (validity[currentCenter])
-                {
-                    buffer += fourierCoeffs.Row(currentCenter);
-                    nCenters++;
-                }
-
-                currentCenter++;
+                continue;
             }
-
-            if (nCenters > 0) buffer /= nCenters;
+            for (var j = start; j < end; j++)
+                if (validity[j])
+                    buffer += fourierCoeffs.Row(j);
+                else
+                    buffer += (fourierCoeffs.Row(j-1) + fourierCoeffs.Row(j + 1)) / 2;
+            buffer /= count;
             output.SetRow(i,
                 Vector<float>.Build.Dense(fourierCoeffs.ColumnCount * 2,
                     j => j >= fourierCoeffs.ColumnCount
                         ? buffer[j - fourierCoeffs.ColumnCount].Phase
                         : buffer[j].Magnitude));
         }
-
         return output;
     }
 }
