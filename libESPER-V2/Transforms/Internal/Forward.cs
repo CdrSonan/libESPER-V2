@@ -104,20 +104,24 @@ internal class Resolve
     }
 
     public static Matrix<float> ToUnvoiced(Matrix<Complex32> fourierCoeffs, Vector<float> wave,
-        PitchDetection pitchDetection,
-        int batchSize, int nBatches)
+        PitchDetection pitchDetection, int stepSize, int n)
     {
+        var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
-        var voicedWave = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, nBatches * batchSize);
-        var output = Matrix<float>.Build.Dense(nBatches, batchSize / 2 + 1);
+        var voicedWave = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
+        var output = Matrix<float>.Build.Dense(nBatches, n);
         for (var i = 0; i < nBatches; i++)
         {
-            var window = wave.SubVector(i * batchSize, batchSize).ToArray();
-            var voicedWindow = voicedWave.SubVector(i * batchSize, batchSize);
-            var unvoicedWindow = new float[batchSize + 2];
-            for (var j = 0; j < batchSize; j++) unvoicedWindow[j] = window[j] - voicedWindow[j];
-            Fourier.ForwardReal(unvoicedWindow, batchSize);
-            for (var j = 0; j < batchSize / 2 + 1; j++)
+            var windowStart = i * stepSize + (stepSize / 2 - n - 1);
+            var windowLength = 2 * n - 2;
+            if (windowStart < 0) windowStart = 0;
+            if (windowStart + windowLength > wave.Count) windowStart = wave.Count - windowLength;
+            var window = wave.SubVector(windowStart, windowLength).ToArray();
+            var voicedWindow = voicedWave.SubVector(windowStart, windowLength);
+            var unvoicedWindow = new float[windowLength + 2]; // +2 to have enough storage for the (inplace) result
+            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = window[j] - voicedWindow[j];
+            Fourier.ForwardReal(unvoicedWindow, windowLength);
+            for (var j = 0; j < n; j++)
                 output[i, j] = (float)Math.Pow(unvoicedWindow[2 + j], 2) +
                                (float)Math.Pow(unvoicedWindow[2 + j + 1], 2);
         }

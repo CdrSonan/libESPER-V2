@@ -310,11 +310,12 @@ namespace libESPER_V2.Core
         }
     }
 
-    public class EsperAudioConfig
+    public class EsperAudioConfig(UInt16 nVoiced, UInt16 nUnvoiced, int stepSize, bool isCompressed = false)
     {
-        public readonly UInt16 NVoiced;
-        public readonly UInt16 NUnvoiced;
-        public readonly bool IsCompressed;
+        public readonly UInt16 NVoiced = nVoiced;
+        public readonly UInt16 NUnvoiced = nUnvoiced;
+        public readonly int StepSize = stepSize;
+        public readonly bool IsCompressed = isCompressed;
         public int FrameSize()
         {
             if (IsCompressed)
@@ -325,12 +326,6 @@ namespace libESPER_V2.Core
             {
                 return 1 + 2 * NVoiced + NUnvoiced;
             }
-        }
-        public EsperAudioConfig(UInt16 nVoiced, UInt16 nUnvoiced, bool isCompressed = false)
-        {
-            this.NVoiced = nVoiced;
-            this.NUnvoiced = nUnvoiced;
-            this.IsCompressed = isCompressed;
         }
     }
 

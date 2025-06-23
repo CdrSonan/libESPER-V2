@@ -15,23 +15,20 @@ public class EsperTransforms
 {
     public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config, EsperForwardConfig forwardConfig)
     {
-        var batchSize = (config.NUnvoiced - 1) * 2;
-        var batches = x.Count / batchSize;
+        var batches = (int)(x.Count / config.StepSize);
         var output = new EsperAudio(batches, config);
-
         var pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping,
             forwardConfig.PitchDistanceLimit);
-        var markers = pitchDetection.PitchMarkers(forwardConfig.ExpectedPitch);
         var deltas = pitchDetection.PitchDeltas(forwardConfig.ExpectedPitch);
         output.SetPitch(deltas);
 
         var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
         var coeffs = Resolve.ToFourier(pitchSync);
         var smoothed = Resolve.Smoothing(coeffs);
-        var voiced = Resolve.ToVoiced(smoothed, pitchDetection, batchSize, batches);
+        var voiced = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voiced.SubMatrix(0, voiced.RowCount, 0, config.NVoiced));
         output.SetVoicedPhases(voiced.SubMatrix(0, voiced.RowCount, config.NVoiced, config.NVoiced));
-        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, batchSize, batches);
+        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, config.StepSize, config.NUnvoiced);
         output.SetUnvoiced(unvoiced);
         return output;
     }

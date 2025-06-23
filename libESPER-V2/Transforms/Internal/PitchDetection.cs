@@ -182,21 +182,29 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
     public Vector<float> PitchDeltas(float? expectedPitch)
     {
         _pitchMarkers = PitchMarkers(expectedPitch);
-        var cursor = 0;
-        var batchSize = (config.NUnvoiced - 1) * 2;
-        var batches = (int)Math.Ceiling((double)(_oscillatorProxy.Count / batchSize));
+        var start = 0;
+        var end = 0;
+        var batches = (int)Math.Ceiling((double)(_oscillatorProxy.Count / config.StepSize));
         var pitchDeltas = Vector<float>.Build.Dense(batches);
         for (var i = 0; i < batches; i++)
         {
-            while (_pitchMarkers[cursor] <= i * batchSize && cursor < _pitchMarkers.Count) cursor++;
-            if (cursor == 0)
-                pitchDeltas[i] = _pitchMarkers[cursor + 1] - _pitchMarkers[cursor];
-            else if (cursor == _pitchMarkers.Count - 1)
-                pitchDeltas[i] = _pitchMarkers[cursor] - _pitchMarkers[cursor - 1];
-            else
-                pitchDeltas[i] = GetValidPitchDelta(cursor - 1);
+            while (start + 1 < _pitchMarkers.Count && _pitchMarkers[start + 1] < i * config.StepSize) start++;
+            while (end < _pitchMarkers.Count && _pitchMarkers[end] <= (i + 1) * config.StepSize) end++;
+            var count = end - start;
+            pitchDeltas[i] = 0;
+            if (count == 0)
+            {
+                continue;
+            }
+            for (var j = start; j < end; j++)
+                if (j == 0) 
+                    pitchDeltas[i] += _pitchMarkers[j + 1] - _pitchMarkers[j];
+                else if (j == _pitchMarkers.Count - 1)
+                    pitchDeltas[i] += _pitchMarkers[j] - _pitchMarkers[j - 1];
+                else
+                    pitchDeltas[i] += GetValidPitchDelta(j);
+            pitchDeltas[i] /= count;
         }
-
         return pitchDeltas;
     }
 }
