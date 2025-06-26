@@ -40,7 +40,7 @@ public class EsperTransforms
         return output;
     }
 
-    public static Vector<float> Inverse(EsperAudio x)
+    public static Vector<float> Inverse(EsperAudio x, float phase = 0)
     {
         var length = x.Length;
         var output = Vector<float>.Build.Dense(length, 0);
