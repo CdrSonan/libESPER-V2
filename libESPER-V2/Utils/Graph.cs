@@ -63,9 +63,9 @@ internal class Dag
 
 public class Node(int id, bool isRoot, bool isLeaf)
 {
-    public int Id = id;
+    public readonly int Id = id;
     public bool IsLeaf = isLeaf;
-    public bool IsRoot = isRoot;
+    public readonly bool IsRoot = isRoot;
     public Node? Parent;
     public double Value = 0;
 }

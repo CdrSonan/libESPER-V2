@@ -30,6 +30,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
 
     private void BuildPitchGraph(int edgeThreshold)
     {
+        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
         for (var i = 1; i < _oscillatorProxy.Count; i++)
             if (_oscillatorProxy[i - 1] < 0 && _oscillatorProxy[i] >= 0)
             {
@@ -67,15 +68,13 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
     private double PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit)
     {
         var delta = id2 - id1;
-        //TODO: Assertions based on limit values
+        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
         if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
 
         if (delta < lowerLimit || delta > upperLimit) return double.PositiveInfinity;
-        double bias;
-        if (expectedPitch == null)
-            bias = 1;
-        else
-            bias = Math.Abs((double)(delta - expectedPitch));
+        double bias = expectedPitch == null
+                ? 1
+                : Math.Abs((double)(delta - expectedPitch.Value));
         double error = 0;
         double contrast = 0;
         int start1, start2;
@@ -106,6 +105,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
 
     private void CheckValidity()
     {
+        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
         _pitchMarkerValidity = new bool[_graph.Nodes.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;
@@ -161,7 +161,6 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             CheckValidity();
             _pitchMarkers = _graph.Trace();
         }
-
         return _pitchMarkers;
     }
 

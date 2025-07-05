@@ -2,7 +2,7 @@
 
 namespace libESPER_V2.Utils;
 
-internal class Mel
+internal static class Mel
 {
     public static float HzToMel(float hz)
     {

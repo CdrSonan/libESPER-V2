@@ -1,34 +1,16 @@
 ﻿using MathNet.Numerics;
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
+using libESPER_V2.Utils;
 
 namespace libESPER_V2.Transforms.Internal;
 
-internal class PitchSync
+internal static class PitchSync
 {
-    private static Vector<float> WhittakerShannon(Vector<float> wave, Vector<float> coords)
-    {
-        var result = Vector<float>.Build.Dense(coords.Count, 0);
-        for (var i = 0; i < coords.Count; i++)
-        {
-            var coord = coords[i];
-            var multiplier = float.Sin((coord % 2.0f + 2.0f) % 2.0f * (float)Math.PI) / (float)Math.PI;
-            for (var j = 0; j < wave.Count; j++)
-                if (Math.Abs(coord - j) < 0.0001f)
-                    result[i] += wave[j];
-                else if (j % 2 == 0)
-                    result[i] += wave[j] * multiplier / (coord - j);
-                else
-                    result[i] -= wave[j] * multiplier / (coord - j);
-        }
-
-        return result;
-    }
-
     private static Vector<float> Resample(Vector<float> signal, int n)
     {
         var scale = Vector<float>.Build.Dense(n, i => i * (float)signal.Count / n);
-        return WhittakerShannon(signal, scale);
+        return WhittakerShannon.Interpolate(signal, scale);
     }
 
     public static Matrix<float> ToPitchSync(Vector<float> wave, PitchDetection pitchDetection, int n)
@@ -67,7 +49,7 @@ internal class PitchSync
     }
 }
 
-internal class Resolve
+internal static class Resolve
 {
     public static Matrix<Complex32> ToFourier(Matrix<float> pitchSyncWave)
     {

@@ -11,7 +11,7 @@ public class EsperForwardConfig(float? pitchOscillatorDamping, int? pitchDistanc
     public float? ExpectedPitch = expectedPitch;
 }
 
-public class EsperTransforms
+public static class EsperTransforms
 {
     public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config, EsperForwardConfig forwardConfig)
     {
@@ -40,10 +40,17 @@ public class EsperTransforms
         return output;
     }
 
-    public static Vector<float> Inverse(EsperAudio x, float phase = 0)
+    public static (Vector<float>, float) Inverse(EsperAudio x, float phase = 0)
     {
-        var length = x.Length;
-        var output = Vector<float>.Build.Dense(length, 0);
-        return output;
+        var (voiced, newPhase) = InverseResolve.ReconstructVoiced(x, phase);
+        var unvoiced = InverseResolve.ReconstructUnvoiced(x, 727);
+        return (voiced + unvoiced, newPhase);
+    }
+    
+    public static (Vector<float>, float) InverseApprox(EsperAudio x, float phase = 0)
+    {
+        var (voiced, newPhase) = InverseResolve.ReconstructVoiced(x, phase);
+        var unvoiced = InverseResolve.ReconstructUnvoiced(x, 727);
+        return (voiced + unvoiced, newPhase);
     }
 }

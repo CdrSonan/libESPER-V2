@@ -42,8 +42,9 @@ namespace libESPER_V2.Core
             amps.MapInplace(x => x < 0 ? 0 : x); // Ensure amplitudes are non-negative
             SetVoicedAmps(amps);
             Matrix<float> phases = GetVoicedPhases();
-            // TODO: correct phases to be in the range [-pi, pi]
-            phases.MapInplace(x => x < -(float)Math.PI || x > (float)Math.PI ? x % (2 * (float)Math.PI) : x); // Ensure phases are between - pi and pi
+            phases.MapInplace(x => x % (2 * (float)Math.PI));
+            phases.MapInplace(x => x < -Math.PI ? x + 2 * (float)Math.PI : x);
+            phases.MapInplace(x => x > Math.PI ? x - 2 * (float)Math.PI : x);
             SetVoicedPhases(phases);
             Matrix<float> unvoiced = GetUnvoiced();
             unvoiced.MapInplace(x => x < 0 ? 0 : x); // Ensure unvoiced amplitudes are non-negative

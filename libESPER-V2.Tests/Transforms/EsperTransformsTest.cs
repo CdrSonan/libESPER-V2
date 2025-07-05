@@ -22,4 +22,17 @@ public class EsperTransformsTest
         var output = EsperTransforms.Forward(waveform, config, fwdConfig);
         Assert.That(output, Is.Not.Null);
     }
+    
+    [Test]
+    [TestCase(10000, 50, (ushort)65, (ushort)65, 256)]
+    [TestCase(1000, 10, (ushort)17, (ushort)129, 256)]
+    public void Inverse_SineInput_ReturnsValid(int length, float pitch, ushort nVoiced, ushort nUnvoiced, int stepSize)
+    {
+        var config = new EsperAudioConfig(nVoiced, nUnvoiced, stepSize);
+        var audio = new EsperAudio(length, config);
+        audio.SetPitch(Vector<float>.Build.Dense(length, pitch));
+        audio.SetVoicedAmps(Matrix<float>.Build.Dense(length, nVoiced, (i, j) => j < 3 ? 1 : 0));
+        var (result, phase) = EsperTransforms.Inverse(audio);
+        Assert.That(result, Is.Not.Null);
+    }
 }

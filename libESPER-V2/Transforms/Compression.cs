@@ -4,7 +4,7 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms;
 
-public class Compression
+public static class Compression
 {
     public static CompressedEsperAudio Compress(EsperAudio audio, int temporalCompression, int spectralCompression,
         float eps)
