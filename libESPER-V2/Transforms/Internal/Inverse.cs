@@ -8,7 +8,7 @@ namespace libESPER_V2.Transforms.Internal;
 
 internal static class InverseResolve
 {
-    private static Vector<float> HanningWindow(int size)
+    public static Vector<float> HanningWindow(int size)
     {
         var middle = (float)size / 2;
         return Vector<float>.Build.Dense(size, (i) => 
@@ -103,9 +103,9 @@ internal static class InverseResolve
             2 * audio.Config.NUnvoiced,
             (i, j) => Normal.Sample(0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
+        var norm = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced - 1;
-        var window  = HanningWindow(audio.Config.NUnvoiced * 2 - 2) * 
-            2 * audio.Config.StepSize / audio.Config.NUnvoiced;
+        var window = HanningWindow(audio.Config.NUnvoiced * 2 - 2);
         for (var i = 0; i < audio.Length; i++)
         {
             var coeffsArr = coeffs.Row(i).ToArray();
@@ -129,7 +129,9 @@ internal static class InverseResolve
                 (j) => window[localOffset + j] * (float)coeffsArr[localOffset + j]);
             var buffer = output.SubVector(index, count);
             output.SetSubVector(index, count, buffer + wave);
+            var normBuffer = norm.SubVector(index, count);
+            norm.SetSubVector(index, count, normBuffer + window.SubVector(localOffset, count));
         }
-        return output;
+        return output / norm;
     }
 }

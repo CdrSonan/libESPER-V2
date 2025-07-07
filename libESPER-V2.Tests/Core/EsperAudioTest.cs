@@ -13,7 +13,7 @@ public class EsperAudioTest
     [SetUp]
     public void Setup()
     {
-        _defaultConfig = new EsperAudioConfig(2, 3, 10);
+        _defaultConfig = new EsperAudioConfig(2, 16, 10);
     }
 
     private EsperAudioConfig _defaultConfig;

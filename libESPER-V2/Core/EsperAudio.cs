@@ -232,7 +232,7 @@ namespace libESPER_V2.Core
             {
                 throw new ArgumentException("Voiced amps vector size does not match existing size.");
             }
-            _data.SetSubMatrix(index, 1, 1, Config.NVoiced, amps.ToColumnMatrix());
+            _data.SetSubMatrix(index, 1, 1, Config.NVoiced, amps.ToRowMatrix());
         }
         public void SetVoicedAmps(int start, int end, Matrix<float> amps)
         {
@@ -264,7 +264,7 @@ namespace libESPER_V2.Core
             {
                 throw new ArgumentException("Voiced phases vector size does not match existing size.");
             }
-            _data.SetSubMatrix(index, 1, 1 + Config.NVoiced, Config.NVoiced, phases.ToColumnMatrix());
+            _data.SetSubMatrix(index, 1, 1 + Config.NVoiced, Config.NVoiced, phases.ToRowMatrix());
         }
         public void SetVoicedPhases(int start, int end, Matrix<float> phases)
         {
@@ -296,7 +296,7 @@ namespace libESPER_V2.Core
             {
                 throw new ArgumentException("Unvoiced vector size does not match existing size.");
             }
-            _data.SetSubMatrix(index, 1, 1 + 2 * Config.NVoiced, Config.NUnvoiced, unvoiced.ToColumnMatrix());
+            _data.SetSubMatrix(index, 1, 1 + 2 * Config.NVoiced, Config.NUnvoiced, unvoiced.ToRowMatrix());
         }
         public void SetUnvoiced(int start, int end, Matrix<float> unvoiced)
         {
@@ -312,12 +312,38 @@ namespace libESPER_V2.Core
         }
     }
 
-    public class EsperAudioConfig(UInt16 nVoiced, UInt16 nUnvoiced, int stepSize, bool isCompressed = false)
+    public class EsperAudioConfig
     {
-        public readonly UInt16 NVoiced = nVoiced;
-        public readonly UInt16 NUnvoiced = nUnvoiced;
-        public readonly int StepSize = stepSize;
-        public readonly bool IsCompressed = isCompressed;
+        public readonly ushort NVoiced;
+        public readonly ushort NUnvoiced;
+        public readonly int StepSize;
+        public readonly bool IsCompressed;
+
+        public EsperAudioConfig(ushort nVoiced, ushort nUnvoiced, int stepSize, bool isCompressed = false)
+        {
+            if (nVoiced < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(nVoiced), "NVoiced must be greater than zero.");
+            }
+            if (nUnvoiced < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(nUnvoiced), "NUnvoiced must be greater than zero.");
+            }
+            if (stepSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(stepSize), "StepSize must be greater than zero.");
+            }
+
+            if (stepSize > 2 * nUnvoiced - 2)
+            {
+                throw new ArgumentOutOfRangeException(nameof(stepSize), "insufficient step size compared to unvoiced size.");
+            }
+            this.NVoiced = nVoiced;
+            this.NUnvoiced = nUnvoiced;
+            this.StepSize = stepSize;
+            this.IsCompressed = isCompressed;
+        }
+
         public int FrameSize()
         {
             if (IsCompressed)

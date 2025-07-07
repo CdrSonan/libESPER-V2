@@ -6,20 +6,22 @@ namespace libESPER_V2.Effects;
 
 public static class Pitchshift
 {
-    public static void Apply(EsperAudio audio, Vector<float> pitch)
+    public static void PitchShift(EsperAudio audio, Vector<float> pitch)
     {
         if (pitch.Count != audio.Length)
             throw new ArgumentException("Pitch vector length must match audio length.", nameof(pitch));
-        
+        if (pitch.Any(p => p < 0))
+            throw new ArgumentException("Pitch vector must not contain negative elements.", nameof(pitch));
         var oldPitch = audio.GetPitch();
         var newPitch = pitch;
         var voiced = audio.GetVoicedAmps();
         var unvoiced = audio.GetUnvoiced();
-        var switchPoints = Vector<int>.Build.Dense(audio.Length, (i) =>
-            audio.Config.NVoiced * (int)(oldPitch[i] / newPitch[i]));
+        var switchPoints = Enumerable.Range(0, audio.Length)
+                .Select(i => audio.Config.NVoiced * (int)(oldPitch[i] / newPitch[i]))
+                .ToArray();
         for (var i = 0; i < audio.Length; ++i)
         {
-            var switchPoint = switchPoints[i];
+            var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : switchPoints[i];
             var pitchFactor = oldPitch[i] / newPitch[i];
             var fromVoicedScale = Vector<float>.Build.Dense(switchPoint, (j) => j * pitchFactor);
             var fromVoiced = WhittakerShannon.Interpolate(voiced.Row(i), fromVoicedScale);

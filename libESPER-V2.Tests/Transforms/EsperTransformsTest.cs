@@ -11,8 +11,8 @@ namespace libESPER_V2.Tests.Transforms;
 public class EsperTransformsTest
 {
     [Test]
-    [TestCase(10000, 50, 5, 65, 256)]
-    [TestCase(1000, 10, 17, 129, 256)]
+    [TestCase(10000, 50, 5, 129, 256)]
+    [TestCase(1000, 10, 17, 257, 256)]
     public void Forward_SineInput_ReturnsValid(int length, float wavelength, int nVoiced, int nUnvoiced, int stepSize)
     {
         var waveform = Vector<float>.Build.Dense(length,
@@ -24,11 +24,11 @@ public class EsperTransformsTest
     }
     
     [Test]
-    [TestCase(10000, 50, (ushort)65, (ushort)65, 256)]
-    [TestCase(1000, 10, (ushort)17, (ushort)129, 256)]
-    public void Inverse_SineInput_ReturnsValid(int length, float pitch, ushort nVoiced, ushort nUnvoiced, int stepSize)
+    [TestCase(10000, 50, 65, 129, 256)]
+    [TestCase(1000, 10, 17, 257, 256)]
+    public void Inverse_SineInput_ReturnsValid(int length, float pitch, int nVoiced, int nUnvoiced, int stepSize)
     {
-        var config = new EsperAudioConfig(nVoiced, nUnvoiced, stepSize);
+        var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var audio = new EsperAudio(length, config);
         audio.SetPitch(Vector<float>.Build.Dense(length, pitch));
         audio.SetVoicedAmps(Matrix<float>.Build.Dense(length, nVoiced, (i, j) => j < 3 ? 1 : 0));
