@@ -26,7 +26,7 @@ public class InverseResolveTests
         var result = InverseResolve.HanningWindow(size);
         for (var i = 1; i < size / 2; i++)
         {
-            Assert.That(result[i], Is.InRange(result[size - i] * 0.999, result[size - i] * 1.001));
+            Assert.That(result[i], Is.EqualTo(result[size - i]).Within(0.0001));
         }
     }
 

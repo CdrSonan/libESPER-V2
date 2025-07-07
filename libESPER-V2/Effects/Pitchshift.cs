@@ -21,6 +21,11 @@ public static class Pitchshift
                 .ToArray();
         for (var i = 0; i < audio.Length; ++i)
         {
+            if (oldPitch[i] == 0 || newPitch[i] == 0)
+            {
+                audio.SetVoicedAmps(i, Vector<float>.Build.Dense(audio.Config.NVoiced, 0));
+                continue;
+            }
             var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : switchPoints[i];
             var pitchFactor = oldPitch[i] / newPitch[i];
             var fromVoicedScale = Vector<float>.Build.Dense(switchPoint, (j) => j * pitchFactor);
