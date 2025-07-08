@@ -376,6 +376,19 @@ namespace libESPER_V2.Core
             this.SpectralCompression = spectralCompression;
             this._data = Matrix<Half>.Build.Dense(CompressedLength, config.FrameSize(), (Half)0.0f);
         }
+        public CompressedEsperAudio(int length, int temporalCompression, int spectralCompression, EsperAudioConfig config, Matrix<Half> data)
+        {
+            if (data.RowCount != CompressedLength)
+                throw new ArgumentException("Compressed array size does not match existing size. (frame count)");
+            if (data.ColumnCount != config.FrameSize())
+                throw new ArgumentException("Compressed array size does not match existing size. (frame size)");
+            this.Config = config;
+            this.Length = length;
+            this.CompressedLength = length / temporalCompression;
+            this.TemporalCompression = temporalCompression;
+            this.SpectralCompression = spectralCompression;
+            this._data = data;
+        }
         public CompressedEsperAudio(CompressedEsperAudio audio)
         {
             this.Config = audio.Config;
