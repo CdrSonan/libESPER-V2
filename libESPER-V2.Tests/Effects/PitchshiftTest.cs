@@ -1,10 +1,9 @@
 using System;
 using System.Linq;
-using libESPER_V2.Core;
 using libESPER_V2.Effects;
 using MathNet.Numerics.LinearAlgebra;
 using NUnit.Framework;
-using static libESPER_V2.Tests.MockESPERAudioFactory;
+using static libESPER_V2.Tests.MockFactories;
 
 namespace libESPER_V2.Tests.Effects;
 

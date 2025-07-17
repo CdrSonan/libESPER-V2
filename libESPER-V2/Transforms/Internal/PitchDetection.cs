@@ -5,16 +5,17 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms.Internal;
 
-internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, float oscillatorDamping, int distanceLimit)
+public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float oscillatorDamping, int distanceLimit)
 {
-    private readonly Dag _graph = new();
+    private readonly Graph _graph = new();
     private Vector<float>? _oscillatorProxy;
     private List<int>? _pitchMarkers;
     private bool[]? _pitchMarkerValidity;
 
 
-    private void DrivenOscillator()
+    private Vector<float> DrivenOscillator()
     {
+        if (_oscillatorProxy != null) return _oscillatorProxy;
         _oscillatorProxy = Vector<float>.Build.Dense(audio.Count, 0);
         float a;
         float v = 0;
@@ -26,16 +27,17 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             x += v;
             _oscillatorProxy[i] = x;
         }
+        return _oscillatorProxy;
     }
 
     private void BuildPitchGraph(int edgeThreshold)
     {
-        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
-        for (var i = 1; i < _oscillatorProxy.Count; i++)
-            if (_oscillatorProxy[i - 1] < 0 && _oscillatorProxy[i] >= 0)
+        Vector<float> oscillator = DrivenOscillator();
+        for (var i = 1; i < oscillator.Count; i++)
+            if (oscillator[i - 1] < 0 && oscillator[i] >= 0)
             {
                 var root = i < edgeThreshold || _graph.Nodes.Count == 0;
-                var leaf = i >= _oscillatorProxy.Count - edgeThreshold;
+                var leaf = i >= oscillator.Count - edgeThreshold;
                 Node node = new(i, root, leaf);
                 _graph.AddNode(node);
             }
@@ -68,7 +70,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
     private double PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit)
     {
         var delta = id2 - id1;
-        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
+        Vector<float> oscillator = DrivenOscillator();
         if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
 
         if (delta < lowerLimit || delta > upperLimit) return double.PositiveInfinity;
@@ -83,7 +85,7 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             start1 = id1;
             start2 = id2;
         }
-        else if (id2 >= _oscillatorProxy.Count - delta)
+        else if (id2 >= oscillator.Count - delta)
         {
             start1 = id1 - delta;
             start2 = id2 - delta;
@@ -96,16 +98,30 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
 
         for (var i = 0; i < delta; i++)
         {
-            error += Math.Pow(_oscillatorProxy[start1 + i] - _oscillatorProxy[start2 + i], 2) * bias;
-            contrast += _oscillatorProxy[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
+            error += Math.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;
+            contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
         }
 
         return error / Math.Pow(contrast, 2);
     }
-
-    private void CheckValidity()
+    
+    public List<int> PitchMarkers(float? expectedPitch)
     {
-        if (_oscillatorProxy == null) throw new InvalidOperationException("Oscillator proxy is not initialized.");
+        if (_pitchMarkers != null) return _pitchMarkers;
+        var edgeThreshold = (config.NUnvoiced - 1) * 2 / 3;
+        DrivenOscillator();
+        BuildPitchGraph(edgeThreshold);
+        FillPitchGraph(expectedPitch, edgeThreshold);
+        _pitchMarkers = _graph.Trace();
+        Validity(expectedPitch);
+        return _pitchMarkers;
+    }
+
+    public bool[] Validity(float? expectedPitch)
+    {
+        if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
+        if (_pitchMarkers == null) PitchMarkers(expectedPitch);
+        Vector<float> oscillator = DrivenOscillator();
         _pitchMarkerValidity = new bool[_graph.Nodes.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;
@@ -123,11 +139,11 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             float validError = 0;
             var previousScale = Vector<double>.Build.Dense(previousSize, j => j * ((float)sectionSize / previousSize));
             var nextScale = Vector<double>.Build.Dense(nextSize, j => j * ((float)sectionSize / nextSize));
-            var section = _oscillatorProxy.SubVector(_graph.Nodes[i].Id, sectionSize);
+            var section = oscillator.SubVector(_graph.Nodes[i].Id, sectionSize);
             var previousSection = Vector<double>.Build.Dense(previousSize);
-            _oscillatorProxy.SubVector(_graph.Nodes[i - 1].Id, previousSize).MapConvert(x => x, previousSection);
+            oscillator.SubVector(_graph.Nodes[i - 1].Id, previousSize).MapConvert(x => x, previousSection);
             var nextSection = Vector<double>.Build.Dense(nextSize);
-            _oscillatorProxy.SubVector(_graph.Nodes[i + 1].Id, nextSize).MapConvert(x => x, nextSection);
+            oscillator.SubVector(_graph.Nodes[i + 1].Id, nextSize).MapConvert(x => x, nextSection);
             var previousInterpolator = CubicSpline.InterpolatePchip(previousScale, previousSection);
             var previousInterpolated =
                 Vector<float>.Build.Dense(previousSize, j => (float)previousInterpolator.Interpolate(j));
@@ -138,8 +154,8 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             float invalidError = 0;
             for (var j = 0; j < sectionSize; j++)
             {
-                var alternative = _oscillatorProxy[_graph.Nodes[i - 1].Id + j] -
-                                  _oscillatorProxy[_graph.Nodes[i + 2].Id - sectionSize + j];
+                var alternative = oscillator[_graph.Nodes[i - 1].Id + j] -
+                                  oscillator[_graph.Nodes[i + 2].Id - sectionSize + j];
                 invalidError += (float)Math.Pow(alternative, 2);
             }
 
@@ -148,47 +164,31 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             else
                 _pitchMarkerValidity[i] = false;
         }
-    }
-
-    public List<int> PitchMarkers(float? expectedPitch)
-    {
-        if (_pitchMarkers == null)
-        {
-            var edgeThreshold = (config.NUnvoiced - 1) * 2 / 3;
-            DrivenOscillator();
-            BuildPitchGraph(edgeThreshold);
-            FillPitchGraph(expectedPitch, edgeThreshold);
-            CheckValidity();
-            _pitchMarkers = _graph.Trace();
-        }
-        return _pitchMarkers;
-    }
-
-    public bool[] Validity(float? expectedPitch)
-    {
-        if (_pitchMarkerValidity == null) PitchMarkers(expectedPitch);
         return _pitchMarkerValidity;
     }
 
     private int GetValidPitchDelta(int index)
     {
-        if (_pitchMarkerValidity[index]) return _pitchMarkers[index + 1] - _pitchMarkers[index];
-        var previousDelta = _pitchMarkers[index] - _pitchMarkers[index - 1];
-        var nextDelta = _pitchMarkers[index + 2] - _pitchMarkers[index + 1];
+        var validity = Validity(null);
+        var markers = PitchMarkers(null);
+        if (validity[index]) return markers[index + 1] - markers[index];
+        var previousDelta = markers[index] - markers[index - 1];
+        var nextDelta = markers[index + 2] - markers[index + 1];
         return (previousDelta + nextDelta) / 2;
     }
 
     public Vector<float> PitchDeltas(float? expectedPitch)
     {
-        _pitchMarkers = PitchMarkers(expectedPitch);
+        var oscillator = DrivenOscillator();
+        var markers = PitchMarkers(expectedPitch);
         var start = 0;
         var end = 0;
-        var batches = (int)Math.Ceiling((double)(_oscillatorProxy.Count / config.StepSize));
+        var batches = oscillator.Count / config.StepSize;
         var pitchDeltas = Vector<float>.Build.Dense(batches);
         for (var i = 0; i < batches; i++)
         {
-            while (start + 1 < _pitchMarkers.Count && _pitchMarkers[start + 1] < i * config.StepSize) start++;
-            while (end < _pitchMarkers.Count && _pitchMarkers[end] <= (i + 1) * config.StepSize) end++;
+            while (start + 1 < markers.Count && markers[start + 1] < i * config.StepSize) start++;
+            while (end < markers.Count && markers[end] <= (i + 1) * config.StepSize) end++;
             var count = end - start;
             pitchDeltas[i] = 0;
             if (count == 0)
@@ -197,9 +197,9 @@ internal class PitchDetection(Vector<float> audio, EsperAudioConfig config, floa
             }
             for (var j = start; j < end; j++)
                 if (j == 0) 
-                    pitchDeltas[i] += _pitchMarkers[j + 1] - _pitchMarkers[j];
-                else if (j == _pitchMarkers.Count - 1)
-                    pitchDeltas[i] += _pitchMarkers[j] - _pitchMarkers[j - 1];
+                    pitchDeltas[i] += markers[j + 1] - markers[j];
+                else if (j == markers.Count - 1)
+                    pitchDeltas[i] += markers[j] - markers[j - 1];
                 else
                     pitchDeltas[i] += GetValidPitchDelta(j);
             pitchDeltas[i] /= count;

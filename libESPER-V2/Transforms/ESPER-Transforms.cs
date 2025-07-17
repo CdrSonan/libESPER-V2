@@ -15,7 +15,7 @@ public static class EsperTransforms
 {
     public static EsperAudio Forward(Vector<float> x, EsperAudioConfig config, EsperForwardConfig forwardConfig)
     {
-        var batches = (int)(x.Count / config.StepSize);
+        var batches = x.Count / config.StepSize;
         var output = new EsperAudio(batches, config);
         var pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping,
             forwardConfig.PitchDistanceLimit);
@@ -35,6 +35,7 @@ public static class EsperTransforms
 
     public static EsperAudio ForwardApprox(Vector<float> x, EsperAudioConfig config)
     {
+        throw new NotImplementedException();
         var length = x.Count;
         var output = new EsperAudio(length, config);
         return output;
@@ -49,6 +50,7 @@ public static class EsperTransforms
     
     public static (Vector<float>, float) InverseApprox(EsperAudio x, float phase = 0)
     {
+        throw new NotImplementedException();
         var (voiced, newPhase) = InverseResolve.ReconstructVoiced(x, phase);
         var unvoiced = InverseResolve.ReconstructUnvoiced(x, 727);
         return (voiced + unvoiced, newPhase);

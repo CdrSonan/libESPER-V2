@@ -6,16 +6,16 @@ using NUnit.Framework.Legacy;
 namespace libESPER_V2.Tests.Utils;
 
 [TestFixture]
-[TestOf(typeof(Dag))]
-public class DagTest
+[TestOf(typeof(Graph))]
+public class GraphTest
 {
     [SetUp]
     public void SetUp()
     {
-        _dag = new Dag();
+        _dag = new Graph();
     }
 
-    private Dag _dag;
+    private Graph _dag;
 
     [Test]
     public void AddNode_ShouldAddNodeToList()

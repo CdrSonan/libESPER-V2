@@ -1,6 +1,6 @@
 ﻿namespace libESPER_V2.Utils;
 
-internal class Dag
+internal class Graph
 {
     public List<Node> Nodes = [];
 
