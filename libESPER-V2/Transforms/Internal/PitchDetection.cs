@@ -5,7 +5,7 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms.Internal;
 
-public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float oscillatorDamping, int distanceLimit)
+public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float? oscillatorDamping, int distanceLimit)
 {
     private readonly Graph _graph = new();
     private Vector<float>? _oscillatorProxy;
@@ -15,6 +15,11 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float 
 
     private Vector<float> DrivenOscillator()
     {
+        if (oscillatorDamping == null)
+        {
+            _oscillatorProxy = Vector<float>.Build.Dense(audio.Count);
+            audio.CopyTo(_oscillatorProxy);
+        }
         if (_oscillatorProxy != null) return _oscillatorProxy;
         _oscillatorProxy = Vector<float>.Build.Dense(audio.Count, 0);
         float a;
@@ -22,7 +27,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float 
         float x = 0;
         for (var i = 1; i < audio.Count; i++)
         {
-            a = audio[i] - oscillatorDamping * v - oscillatorDamping * x;
+            a = (float)(audio[i] - oscillatorDamping * v - oscillatorDamping * x);
             v += a;
             x += v;
             _oscillatorProxy[i] = x;

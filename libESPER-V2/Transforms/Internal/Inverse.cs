@@ -16,20 +16,20 @@ internal static class InverseResolve
     }
     public static (Vector<float>, float) ReconstructVoiced(EsperAudio audio, float phase)
     {
+        var workingPhase = phase;
         var pitch = audio.GetPitch();
         var amplitudes = audio.GetVoicedAmps();
         var phases = audio.GetVoicedPhases();
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         for (var i = 0; i < audio.Config.StepSize / 2; i++)
         {
-            var currentPhase = phase;
             var components = 
                 phases.Row(0) +
-                Vector<float>.Build.Dense(audio.Config.NVoiced, (j) => j * currentPhase);
+                Vector<float>.Build.Dense(audio.Config.NVoiced, (j) => j * workingPhase);
             components.MapIndexedInplace((j, value) => amplitudes[0, j] * (float)Math.Cos(value));
             output[i] = components.Sum();
-            phase += 2 * (float)Math.PI / pitch.First();
-            phase %= 2 * (float)Math.PI;
+            workingPhase += 2 * (float)Math.PI / pitch.First();
+            workingPhase %= 2 * (float)Math.PI;
         }
         for (var i = 0; i < audio.Length - 1; i++)
         {
@@ -43,28 +43,26 @@ internal static class InverseResolve
                 var currentAmplitudes =
                     amplitudes.Row(i) +
                     (amplitudes.Row(i + 1) - amplitudes.Row(i)) * j / audio.Config.StepSize;
-                var currentPhase = phase;
                 var components =
                     currentPhases +
-                    Vector<float>.Build.Dense(audio.Config.NVoiced, (k) => k * currentPhase);
+                    Vector<float>.Build.Dense(audio.Config.NVoiced, (k) => k * workingPhase);
                 components.MapIndexedInplace((k, value) => currentAmplitudes[k] * (float)Math.Cos(value));
                 output[audio.Config.StepSize / 2 + i * audio.Config.StepSize + j] = components.Sum();
-                phase += 2 * (float)Math.PI / currentPitch;
-                phase %= 2 * (float)Math.PI;
+                workingPhase += 2 * (float)Math.PI / currentPitch;
+                workingPhase %= 2 * (float)Math.PI;
             }
         }
         for (var i = 0; i < audio.Config.StepSize / 2; i++)
         {
-            var currentPhase = phase;
             var components =
                 phases.Row(audio.Length - 1) +
-                Vector<float>.Build.Dense(audio.Config.NVoiced, (j) => j * currentPhase);
+                Vector<float>.Build.Dense(audio.Config.NVoiced, (j) => j * workingPhase);
             components.MapIndexedInplace((j, value) => amplitudes[audio.Length - 1, j] * (float)Math.Cos(value));
-            output[i] = components.Sum();
-            phase += 2 * (float)Math.PI / pitch.Last();
-            phase %= 2 * (float)Math.PI;
+            output[output.Count - audio.Config.StepSize / 2 + i] = components.Sum();
+            workingPhase += 2 * (float)Math.PI / pitch.Last();
+            workingPhase %= 2 * (float)Math.PI;
         }
-        return (output, phase);
+        return (output, workingPhase);
     }
 
     public static (Vector<float>, float) ReconstructVoicedFourier(EsperAudio audio, float phase)
@@ -104,13 +102,13 @@ internal static class InverseResolve
             (i, j) => Normal.Sample(0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var norm = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
-        var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced - 1;
+        var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced + 1;
         var window = HanningWindow(audio.Config.NUnvoiced * 2 - 2);
         for (var i = 0; i < audio.Length; i++)
         {
             var coeffsArr = coeffs.Row(i).ToArray();
             Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2);
-            var index = i * audio.Config.StepSize - offset;
+            var index = i * audio.Config.StepSize + offset;
             var count = audio.Config.NUnvoiced * 2 - 2;
             var localOffset = 0;
             if (index < 0)

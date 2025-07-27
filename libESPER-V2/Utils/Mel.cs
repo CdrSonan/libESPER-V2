@@ -59,8 +59,6 @@ internal static class Mel
             var upperIndex = (int)(freqUpper * length / maxFreq);
             for (var j = lowerIndex; j < upperIndex; j++)
             {
-                var freq = j * (maxFreq / length);
-                var melFreq = HzToMel(freq);
                 x[j] = mel[i] * numMelBands / length;
             }
 

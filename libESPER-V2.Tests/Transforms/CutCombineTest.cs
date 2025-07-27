@@ -1,6 +1,6 @@
 using System;
 using libESPER_V2.Core;
-using LibESPER_V2.Transforms;
+using libESPER_V2.Transforms;
 using MathNet.Numerics.LinearAlgebra;
 using NUnit.Framework;
 
@@ -16,7 +16,6 @@ public class CutCombineTest
     [SetUp]
     public void SetUp()
     {
-        // Mock or initialize EsperAudio instances
         _audio1 = MockFactories.CreateMockEsperAudio(10, 129);
         _audio2 = MockFactories.CreateMockEsperAudio(10, 129);
     }
@@ -78,12 +77,12 @@ public class CutCombineTest
     [Test]
     public void FadeIn_InvalidFadeLength_ThrowsArgumentOutOfRangeException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CutCombine.FadeIn(_audio1, 200));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CutCombine.FadeIn(_audio1, 2000));
     }
 
     [Test]
     public void FadeOut_InvalidFadeLength_ThrowsArgumentOutOfRangeException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CutCombine.FadeOut(_audio1, 200));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CutCombine.FadeOut(_audio1, 2000));
     }
 }

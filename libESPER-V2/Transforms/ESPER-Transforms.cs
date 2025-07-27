@@ -7,7 +7,7 @@ namespace libESPER_V2.Transforms;
 public class EsperForwardConfig(float? pitchOscillatorDamping, int? pitchDistanceLimit, float? expectedPitch)
 {
     public readonly int PitchDistanceLimit = pitchDistanceLimit ?? 10;
-    public readonly float PitchOscillatorDamping = pitchOscillatorDamping ?? 0.1f;
+    public readonly float? PitchOscillatorDamping = pitchOscillatorDamping;
     public float? ExpectedPitch = expectedPitch;
 }
 

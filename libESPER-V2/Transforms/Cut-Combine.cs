@@ -1,7 +1,7 @@
 using libESPER_V2.Core;
 using MathNet.Numerics.LinearAlgebra;
 
-namespace LibESPER_V2.Transforms;
+namespace libESPER_V2.Transforms;
 
 public static class CutCombine
 {
@@ -21,17 +21,17 @@ public static class CutCombine
     
     public static EsperAudio Concat(EsperAudio first, EsperAudio second)
     {
-        if (first.Config != second.Config)
+        if (!Equals(first.Config, second.Config))
             throw new ArgumentException("Audio configurations do not match.");
         
-        var combinedData = first.GetFrames().Append(second.GetFrames());
+        var combinedData = first.GetFrames().Stack(second.GetFrames());
         var combinedAudio = new EsperAudio(combinedData, first.Config);
         return combinedAudio;
     }
     
     public static EsperAudio Crossfade(EsperAudio first, EsperAudio second, int fadeLength)
     {
-        if (first.Config != second.Config)
+        if (!Equals(first.Config, second.Config))
             throw new ArgumentException("Audio configurations do not match.");
         
         if (fadeLength <= 0 || fadeLength > first.Length || fadeLength > second.Length)

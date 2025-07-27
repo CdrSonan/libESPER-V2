@@ -81,7 +81,7 @@ public class EsperAudioTest
     public void GetFrames_ValidRange_ShouldReturnMatrix()
     {
         var esperAudio = new EsperAudio(10, _defaultConfig);
-        var range = esperAudio.GetFrames(2, 5);
+        var range = esperAudio.GetFrames(2, 6);
 
         ClassicAssert.AreEqual(4, range.RowCount);
         ClassicAssert.AreEqual(_defaultConfig.FrameSize(), range.ColumnCount);

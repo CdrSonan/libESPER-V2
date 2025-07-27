@@ -19,6 +19,18 @@ public static class MockFactories
         audio.SetUnvoiced(Matrix<float>.Build.Dense(length, nUnvoiced, (i, j) => 0.5f));
         return audio;
     }
+
+    public static CompressedEsperAudio CreateMockCompressedEsperAudio(int nVoiced, int nUnvoiced)
+    {
+        const int length = 1000;
+        const int stepSize = 256;
+        var config = new CompressedEsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize, 4, 2);
+        var audio = new CompressedEsperAudio(length, config);
+        audio.SetPitch(Vector<float>.Build.Dense(audio.CompressedLength, 110.0f));
+        audio.SetVoiced(Matrix<float>.Build.Dense(audio.CompressedLength, nVoiced, (i, j) => j < 5 ? 1 : 0));
+        audio.SetUnvoiced(Matrix<float>.Build.Dense(audio.CompressedLength, nUnvoiced / 2, (i, j) => 0.5f));
+        return audio;
+    }
     
     private static float StackedSines(int i, int n)
     {

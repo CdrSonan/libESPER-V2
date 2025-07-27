@@ -30,12 +30,13 @@ internal static class PitchSync
         return result;
     }
 
-    public static Vector<float> FromPitchSync(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
+    public static (Vector<float>, bool[]) FromPitchSync(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
         int length)
     {
         var markers = pitchDetection.PitchMarkers(null);
         var sections = markers.Count - 1;
         var result = Vector<float>.Build.Dense(length, 0);
+        var coverage = new bool[length];
         for (var i = 0; i < sections; i++)
         {
             var start = markers[i];
@@ -43,9 +44,11 @@ internal static class PitchSync
             var section = pitchSyncWave.Row(i);
             var resampled = Resample(section, count);
             result.SetSubVector(start, count, resampled);
+            for (var j = start; j < start + count; j++)
+                coverage[j] = true;
         }
 
-        return result;
+        return (result, coverage);
     }
 }
 
@@ -56,17 +59,22 @@ internal static class Resolve
         var n = pitchSyncWave.ColumnCount;
         var extension = Matrix<float>.Build.Dense(pitchSyncWave.RowCount, 2, 0);
         float[][] coeffs = pitchSyncWave.Append(extension).ToRowArrays();
-        for (var i = 0; i < pitchSyncWave.RowCount; i++) Fourier.ForwardReal(coeffs[i], n);
+        for (var i = 0; i < pitchSyncWave.RowCount; i++)
+            Fourier.ForwardReal(coeffs[i], n, FourierOptions.NoScaling);
         var result = Matrix<Complex32>.Build.Dense(
             pitchSyncWave.RowCount,
             n / 2 + 1,
-            (i, j) => new Complex32(coeffs[i][2 * j], coeffs[i][2 * j + 1]));
+            (i, j) => new Complex32(coeffs[i][2 * j] * 2 / n, coeffs[i][2 * j + 1] * 2 / n));
         return result;
     }
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs)
     {
-        return fourierCoeffs; //TODO: Implement smoothing
+        var smoothedCoeffs = Matrix<Complex32>.Build.Dense(
+            fourierCoeffs.RowCount,
+            fourierCoeffs.ColumnCount,
+            (i, j) => fourierCoeffs[i, j]);
+        return smoothedCoeffs; //TODO: Implement smoothing
     }
 
     public static Matrix<float> FromFourier(Matrix<Complex32> fourierCoeffs)
@@ -77,11 +85,11 @@ internal static class Resolve
             (i, j) => j % 2 == 0 ? fourierCoeffs[i, j / 2].Real : fourierCoeffs[i, j / 2].Imaginary);
         float[][] coeffs = realCoeffs.ToRowArrays();
         var n = fourierCoeffs.ColumnCount * 2 - 2;
-        for (var i = 0; i < fourierCoeffs.RowCount; i++) Fourier.InverseReal(coeffs[i], n);
+        for (var i = 0; i < fourierCoeffs.RowCount; i++) Fourier.InverseReal(coeffs[i], n, FourierOptions.NoScaling);
         var result = Matrix<float>.Build.Dense(
             fourierCoeffs.RowCount,
             n,
-            (i, j) => coeffs[i][j]);
+            (i, j) => coeffs[i][j] / 2);
         return result;
     }
 
@@ -90,7 +98,7 @@ internal static class Resolve
     {
         var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
-        var voicedWave = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
+        var (voicedWave, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
         var output = Matrix<float>.Build.Dense(nBatches, n);
         for (var i = 0; i < nBatches; i++)
         {
@@ -101,7 +109,7 @@ internal static class Resolve
             var window = wave.SubVector(windowStart, windowLength).ToArray();
             var voicedWindow = voicedWave.SubVector(windowStart, windowLength);
             var unvoicedWindow = new float[windowLength + 2]; // +2 to have enough storage for the (inplace) result
-            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = window[j] - voicedWindow[j];
+            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = validity[windowStart + j] ? window[j] - voicedWindow[j] : 0;
             Fourier.ForwardReal(unvoicedWindow, windowLength);
             for (var j = 0; j < n; j++)
                 output[i, j] = (float)Math.Pow(unvoicedWindow[2 + j], 2) +
