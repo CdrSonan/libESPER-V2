@@ -4,7 +4,7 @@ using libESPER_V2.Utils;
 
 namespace libESPER_V2.Effects;
 
-public static class Pitchshift
+public static partial class Effects
 {
     public static void PitchShift(EsperAudio audio, Vector<float> pitch)
     {

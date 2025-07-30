@@ -8,8 +8,8 @@ using static libESPER_V2.Tests.MockFactories;
 namespace libESPER_V2.Tests.Effects;
 
 [TestFixture]
-[TestOf(typeof(Pitchshift))]
-public class PitchshiftTest
+[TestOf(typeof(libESPER_V2.Effects.Effects))]
+public class PitchShiftTest
 {
 
     [Test]
@@ -18,7 +18,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(5); // Length does not match audio length
 
-        Assert.Throws<ArgumentException>(() => Pitchshift.PitchShift(audio, pitch));
+        Assert.Throws<ArgumentException>(() => libESPER_V2.Effects.Effects.PitchShift(audio, pitch));
     }
 
     [Test]
@@ -27,7 +27,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(1000, i => 1.0f); // Valid pitch vector
 
-        Pitchshift.PitchShift(audio, pitch);
+        libESPER_V2.Effects.Effects.PitchShift(audio, pitch);
 
         Assert.That(audio.GetPitch(), Is.EqualTo(pitch));
     }
@@ -38,7 +38,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(1000, i => i == 5 ? -1.0f : 1.0f);
 
-        Assert.Throws<ArgumentException>(() => Pitchshift.PitchShift(audio, pitch));
+        Assert.Throws<ArgumentException>(() => libESPER_V2.Effects.Effects.PitchShift(audio, pitch));
     }
 
     [Test]
@@ -47,7 +47,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(1000, 0);
 
-        Pitchshift.PitchShift(audio, pitch);
+        libESPER_V2.Effects.Effects.PitchShift(audio, pitch);
 
         Assert.That(audio.GetPitch().All(p => p == 0), Is.True);
     }
@@ -58,7 +58,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(1000, i => 0.9f); // Large values
 
-        Pitchshift.PitchShift(audio, pitch);
+        libESPER_V2.Effects.Effects.PitchShift(audio, pitch);
 
         Assert.That(audio.GetPitch().All(p => p == 0.9f), Is.True);
     }
@@ -69,7 +69,7 @@ public class PitchshiftTest
         var audio = CreateMockEsperAudio(25, 129);
         var pitch = Vector<float>.Build.Dense(1000, i => 10000.0f); // Large values
 
-        Pitchshift.PitchShift(audio, pitch);
+        libESPER_V2.Effects.Effects.PitchShift(audio, pitch);
 
         Assert.That(audio.GetPitch().All(p => p == 10000.0f), Is.True);
     }
@@ -81,7 +81,7 @@ public class PitchshiftTest
         var frames = audio.GetFrames();
         var pitch = audio.GetPitch();
 
-        Pitchshift.PitchShift(audio, pitch);
+        libESPER_V2.Effects.Effects.PitchShift(audio, pitch);
 
         Assert.That(audio.GetFrames(), Is.EqualTo(frames));
     }

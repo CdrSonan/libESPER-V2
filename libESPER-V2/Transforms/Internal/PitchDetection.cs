@@ -15,22 +15,25 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
     private Vector<float> DrivenOscillator()
     {
+        if (_oscillatorProxy != null)
+            return _oscillatorProxy;
         if (oscillatorDamping == null)
         {
             _oscillatorProxy = Vector<float>.Build.Dense(audio.Count);
             audio.CopyTo(_oscillatorProxy);
         }
-        if (_oscillatorProxy != null) return _oscillatorProxy;
-        _oscillatorProxy = Vector<float>.Build.Dense(audio.Count, 0);
-        float a;
-        float v = 0;
-        float x = 0;
-        for (var i = 1; i < audio.Count; i++)
+        else
         {
-            a = (float)(audio[i] - oscillatorDamping * v - oscillatorDamping * x);
-            v += a;
-            x += v;
-            _oscillatorProxy[i] = x;
+            _oscillatorProxy = Vector<float>.Build.Dense(audio.Count, 0);
+            float v = 0;
+            float x = 0;
+            for (var i = 1; i < audio.Count; i++)
+            {
+                var a = (float)(audio[i] - oscillatorDamping * v - oscillatorDamping * x);
+                v += a;
+                x += v;
+                _oscillatorProxy[i] = x;
+            }
         }
         return _oscillatorProxy;
     }
