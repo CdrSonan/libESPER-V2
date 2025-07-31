@@ -6,19 +6,14 @@ namespace libESPER_V2.Effects;
 
 public static partial class Effects
 {
-    public static void PitchShift(EsperAudio audio, Vector<float> pitch)
+    private static void DoPitchShift(EsperAudio audio, Vector<float> newPitch)
     {
-        if (pitch.Count != audio.Length)
-            throw new ArgumentException("Pitch vector length must match audio length.", nameof(pitch));
-        if (pitch.Any(p => p < 0))
-            throw new ArgumentException("Pitch vector must not contain negative elements.", nameof(pitch));
         var oldPitch = audio.GetPitch();
-        var newPitch = pitch;
         var voiced = audio.GetVoicedAmps();
         var unvoiced = audio.GetUnvoiced();
         var switchPoints = Enumerable.Range(0, audio.Length)
-                .Select(i => audio.Config.NVoiced * (int)(oldPitch[i] / newPitch[i]))
-                .ToArray();
+            .Select(i => audio.Config.NVoiced * (int)(oldPitch[i] / newPitch[i]))
+            .ToArray();
         for (var i = 0; i < audio.Length; ++i)
         {
             if (oldPitch[i] == 0 || newPitch[i] == 0)
@@ -37,6 +32,14 @@ public static partial class Effects
             var result = Vector<float>.Build.DenseOfEnumerable(fromVoiced.Concat(fromUnvoiced));
             audio.SetVoicedAmps(i, result);
         }
-        audio.SetPitch(newPitch);
+    }
+    public static void PitchShift(EsperAudio audio, Vector<float> pitch)
+    {
+        if (pitch.Count != audio.Length)
+            throw new ArgumentException("Pitch vector length must match audio length.", nameof(pitch));
+        if (pitch.Any(p => p < 0))
+            throw new ArgumentException("Pitch vector must not contain negative elements.", nameof(pitch));
+        DoPitchShift(audio, pitch);
+        audio.SetPitch(pitch);
     }
 }

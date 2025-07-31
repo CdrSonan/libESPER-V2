@@ -11,5 +11,9 @@ public static partial class Effects
             throw new ArgumentException("Mouth vector length must match audio length.", nameof(mouth));
         if (mouth.Any(p => p is < -1 or > 1))
             throw new ArgumentException("Mouth vector must not contain values outside of [-1, 1].", nameof(mouth));
+
+        var voiced = audio.GetVoicedAmps();
+        var unvoiced = audio.GetUnvoiced();
+        
     }
 }
