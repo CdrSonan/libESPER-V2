@@ -27,6 +27,3 @@ jobs:
 
     - name: Publish to NuGet
       run: dotnet nuget push ${{github.workspace}}}/packages/*.nupkg --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
-
-    - name: Publish symbols to NuGet
-      run: dotnet nuget push ${{github.workspace}}}/packages/*.snupkg --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
