@@ -80,15 +80,33 @@ internal static class InverseResolve
         phases.MapInplace((value) => value % 2 * (float)Math.PI);
         phases.MapInplace((value) => value < -Math.PI ? value + (float)Math.PI : value);
         phases.MapInplace((value) => value > Math.PI ? value - (float)Math.PI : value);
+
+        var hannWindow = HanningWindow(2 * audio.Config.StepSize);
+        var hannWindowLeft = hannWindow.SubVector(0, audio.Config.StepSize);
+        var hannWindowRight = hannWindow.SubVector(audio.Config.StepSize, audio.Config.StepSize);
+        
+        var rightOutputSection = Vector<float>.Build.Dense(audio.Config.StepSize, 0);
         for (var i = 0; i < audio.Length; i++)
         {
             var il = i;
-            var rowArr = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize * 2, 
-                (j) => j % 2 == 0 ? 
+            var rowArr = Vector<float>.Build.Dense(audio.Config.StepSize * 2, 
+                (j) => j > audio.Config.NVoiced ? 0 :
+                    (j % 2 == 0 ? 
                     amplitudes[il, j / 2] * (float)Math.Cos(phases[il, j / 2]) : 
-                    amplitudes[il, j / 2] * (float)Math.Sin(phases[il, j / 2])).ToArray();
+                    amplitudes[il, j / 2] * (float)Math.Sin(phases[il, j / 2]))).ToArray();
             Fourier.InverseReal(rowArr, audio.Config.NVoiced * 2 - 2);
-            //TODO complete implementation
+            var outputSection = Vector<float>.Build.DenseOfArray(rowArr);
+            var leftOutputSection = outputSection.SubVector(
+                0, 
+                audio.Config.StepSize).PointwiseMultiply(hannWindowLeft);
+            output.SetSubVector(
+                i * audio.Config.StepSize,
+                audio.Config.StepSize,
+                rightOutputSection + leftOutputSection);
+            rightOutputSection = outputSection.SubVector(
+                audio.Config.StepSize,
+                audio.Config.StepSize).PointwiseMultiply(hannWindowRight);
+            
         }
         return (output, phases[audio.Length - 1, 0]);
     }

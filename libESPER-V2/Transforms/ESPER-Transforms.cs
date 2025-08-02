@@ -50,8 +50,7 @@ public static class EsperTransforms
     
     public static (Vector<float>, float) InverseApprox(EsperAudio x, float phase = 0)
     {
-        throw new NotImplementedException();
-        var (voiced, newPhase) = InverseResolve.ReconstructVoiced(x, phase);
+        var (voiced, newPhase) = InverseResolve.ReconstructVoicedFourier(x, phase);
         var unvoiced = InverseResolve.ReconstructUnvoiced(x, 727);
         return (voiced + unvoiced, newPhase);
     }

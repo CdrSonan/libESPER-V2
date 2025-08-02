@@ -8,22 +8,31 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
-    <PackageTags>speech;singing;tts;asr;vocoder;voice cloning;audio;pitch detection;library</PackageTags>
-    <PackageReleaseNotes>Initial pre-release version; pending further testing.</PackageReleaseNotes>
+    <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
+    <PackageReleaseNotes>- Added Mouth effect.
+- Added Approximate Backwards transform
+- Updated Readme
+
+pre-release version; pending further testing.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageIcon>ESPER_Logo.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
+    </None>
+    <None Update="ESPER_Logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
     </None>
   </ItemGroup>
 

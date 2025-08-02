@@ -1,11 +1,19 @@
+<p align="center">
+  <img width="320" src="ESPER_Logo_large.png" alt="">
+</p>
+
 # libESPER-V2
+
+[![Unit Tests](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml/badge.svg?branch=master&event=push)](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml)
+[![GitHub release](https://img.shields.io/github/release/CdrSonan/libESPER-V2.svg)](https://github.com/CdrSonan/libESPER-V2/releases/latest)
+[![NuGet release](https://img.shields.io/nuget/v/libESPER-V2)](https://www.nuget.org/packages/libESPER-V2)
 
 Second version of the ESPER library for speech parametrization, modification and recovery.
 
 ESPER stands for "enhanced separate processing of excitation and residuals"
 and is, at its core, an algorithm to split audio into a voiced and unvoiced part,
 and describe both parts in a specialized format.
-The unique statistical properties of both part can then be used to efficiently
+The unique statistical properties of both parts can then be used to efficiently
 modify speech parameters that are hard or impossible to change in a waveform or MEL representation.
 Additionally, audio in the ESPER format can be compressed to ≈1/10th of its original size with minimal loss,
 and the format is well-suited for processing with AI/ML techniques.
@@ -58,7 +66,7 @@ graph LR;
 ### Main transforms
 The main features of the library are the "forward" and "backward" ESPER transforms,
 which convert an audio waveform to the ESPER format and back respectively.
-For both directions, an exact and faster, approximate method are available.
+For both directions, an exact and a faster, approximate method is available.
 Additionally, the time step size and number of channels used to describe the voiced/unvoiced parts
 can be chosen freely.
 
@@ -71,7 +79,7 @@ the algorithm can optionally use it as guidance.
 
 ### Pitch Shifting
 One of the most interesting capabilities of libESPER-V2 is to produce natural, artifact-free pitch shifted versions of spoken audio.
-The shift does not need to be uniform, audio can be shifted from any source pitch curve it has to anz target pitch curve.
+The shift does not need to be uniform, audio can be shifted from any source pitch curve to any target pitch curve.
 Completely unvoiced sections with no determinable pitch can be handled as well.
 
 ### Sample Stretching
@@ -86,7 +94,7 @@ libESPER-V2 also includes a collection of vocal effects, useful for a range of s
 - Formant shift (simulates a shorter or longer vocal tract, changing the perceived pitch of the voice without changing the actual pitch)
 - Growl (Adds a growl effect as often seen in metal singing)
 - Mouth (Increases or lowers the clarity of the voice, similar to speaking more clearly, or muffled with a mostly closed mouth)
-- Roughness (simulates more, or less consistent vocal chord vibrations, increasing or lowering the perceived roughness or ruggedness of the voice)
+- Roughness (simulates more/less consistent vocal cord vibrations, increasing or lowering the perceived roughness or ruggedness of the voice)
 
 ### Compression
 The provided compression functions discard phase information about the voiced part, which only contains negligible information in most cases,
@@ -96,11 +104,11 @@ As such, it is NOT lossless, but in practice, the losses are minimal compared to
 ### Serialization
 The library also includes function for serializing and deserializing audio data in the ESPER format to binary strings.
 These strings include all metadata information required for decoding, and to ensure version compatibility.
-This setup was chosed over a file parser implementation to allow developers to save several ESPER-format audio samples
+This setup was chosen over a file parser implementation to allow developers to save several ESPER-format audio samples
 as part of a single, custom file if so desired.
 
 ## Usage
-Please see https://nova-vox.org/esper for a comprehensive overview of available classes, functions and best practices.
+Please see https://nova-vox.org/esper for a comprehensive overview of available classes, functions, and best practices.
 
 ## Installation
 ### NuGet - recommended
@@ -115,13 +123,13 @@ dotnet add package libESPER-V2
 For other build and dependency management systems, follow the instructions on the NuGet website.
 
 ### Binary package
-In addition to NuGet, a ready-to-use binary package is provided with every release. They can be downloaded from the releases page.
+In addition to NuGet, a ready-to-use binary package is provided with every release. They can be downloaded from the Releases page.
 After downloading, move the files to an appropriate location in the file structure of your target project.
-Open your target project in Visual Studio, then right click on the project (not solution!) and choose
+Open your target project in Visual Studio, then right-click on the project (not solution!) and choose
 
 **Add > Reference...**,
 
-then select the .DLL file. Afterwards, you can access the contents of the libESPER-V2 package by putting
+Then select the .DLL file. Afterward, you can access the contents of the libESPER-V2 package by putting
 ```
 using libESPER-V2
 ```
@@ -139,8 +147,8 @@ After loading the .sln file, you will notice it contains two projects:
 Your IDE should automatically detect the latter as the testing project for the library.
 Use the standard build, debug/release config, and test functions of the libESPER-V2 project to build and test it in different configurations.
 When building, three items will be generated in your build directory:
-- A directory containing the .dll of the library, and its auxillary metadata files,
+- A directory containing the .dll of the library, and its auxiliary metadata files,
 - A .nupkg file, containing the NuGet package version of the library,
 - A .snupkg file, containing symbol information for NuGet.
 
-The .dll and its metadata files can then be used in the same way as the binaries downloadable from the releases page.
+The .dll and its metadata files can then be used in the same way as the binaries downloadable from the Releases page.
