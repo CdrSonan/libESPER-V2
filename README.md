@@ -4,7 +4,7 @@
 
 # libESPER-V2
 
-[![Unit Tests](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml/badge.svg?branch=master&event=push)](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml)
+[![Unit Tests](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml/badge.svg?branch=main&event=push)](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml)
 [![GitHub release](https://img.shields.io/github/release/CdrSonan/libESPER-V2.svg)](https://github.com/CdrSonan/libESPER-V2/releases/latest)
 [![NuGet release](https://img.shields.io/nuget/v/libESPER-V2)](https://www.nuget.org/packages/libESPER-V2)
 
