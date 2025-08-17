@@ -8,10 +8,10 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
     <PackageReleaseNotes>- Added Mouth effect.

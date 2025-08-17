@@ -1,12 +1,4 @@
-<p align="center">
-  <img width="320" src="ESPER_Logo_large.png" alt="">
-</p>
-
 # libESPER-V2
-
-[![Unit Tests](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml/badge.svg?branch=main&event=push)](https://github.com/CdrSonan/libESPER-V2/actions/workflows/dotnet.yml)
-[![GitHub release](https://img.shields.io/github/release/CdrSonan/libESPER-V2.svg)](https://github.com/CdrSonan/libESPER-V2/releases/latest)
-[![NuGet release](https://img.shields.io/nuget/v/libESPER-V2)](https://www.nuget.org/packages/libESPER-V2)
 
 Second version of the ESPER library for speech parametrization, modification and recovery.
 
@@ -28,39 +20,6 @@ A typical workflow using ESPER consists of three steps:
 
 Additionally, several other data paths are available, which enable libESPER-V2 to be used in a variety of more complex
 applications:
-
-```mermaid
-graph LR;
-    W1[Waveform]-->F([Forward]);
-    F-->E1[ESPERAudio]
-    W1[Waveform]-->Fa([Approximate Forward]);
-    Fa-->E1[ESPERAudio]
-    E2[ESPERAudio]-->B([Backward]);
-    B-->W2[Waveform];
-    E2[ESPERAudio]-->Ba([Approximate Backward]);
-    Ba-->W2[Waveform];
-
-    E1<-->Cmp[Compressed ESPERAudio];
-    E1<-->Bin[Binary String];
-    Cmp<-->Bin;
-    
-    E1-->Fx([Effects]);
-    Fx-->E2;
-
-    E1-->Ps([Pitch shift]);
-    Ps-->E2;
-
-    E1-->St([Stretch]);
-    St-->E2;
-
-    E1-->Cmb([Combine]);
-    E1-->Cmb;
-    Cmb-->E2;
-
-    E1-->Cut([Cut]);
-    Cut-->E2;
-    Cut-->E2;
-```
 
 ## Features
 ### Main transforms

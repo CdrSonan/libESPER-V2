@@ -182,4 +182,17 @@ public class EffectsTest
         
         Assert.That(audio.GetFrames(), Is.EqualTo(frames));
     }
+    
+    [Test]
+    public void Steadiness_zeroInput_ReturnsSameOutput()
+    {
+        var  audio = CreateMockEsperAudio(25, 129);
+        var frames = audio.GetFrames();
+        var steadiness = Vector<float>.Build.Dense(audio.Length, 0);
+        
+
+        libESPER_V2.Effects.Effects.Steadiness(audio, steadiness);
+        
+        Assert.That(audio.GetFrames(), Is.EqualTo(frames));
+    }
 }
