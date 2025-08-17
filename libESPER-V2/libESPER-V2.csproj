@@ -30,9 +30,13 @@ pre-release version; pending further testing.</PackageReleaseNotes>
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+      <None Include="..\README-NUGET.md">
+          <Pack>True</Pack>
+          <PackagePath>\</PackagePath>
+      </None>
     <None Update="ESPER_Logo.png">
       <Pack>True</Pack>
-      <PackagePath></PackagePath>
+      <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
 
