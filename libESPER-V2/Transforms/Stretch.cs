@@ -62,6 +62,33 @@ public static class Stretch
     
     private static Matrix<float> LoopData(Matrix<float> data, int length, float overlap)
     {
-        
+        var rows = data.RowCount;
+        var cols = data.ColumnCount;
+        if (length < rows)
+        {
+            return data.SubMatrix(0, length, 0, cols);
+        }
+        var output = Matrix<float>.Build.Dense(length, cols);
+        var overlapLength = (int)(length * overlap);
+        var initialLength = length - overlapLength;
+        var loopCount = (int)Math.Floor((double)(length - initialLength) / rows);
+        var initialMatrix = data.SubMatrix(0, initialLength, 0, cols);
+        output.SetSubMatrix(0, 0, initialMatrix);
+        for (var i = 0; i < overlapLength; i++)
+        {
+            var factor = (float)(i + 1) / (overlapLength + 1);
+            var crossfadeRow = factor * data.Row(i) + (1 - factor) * data.Row(rows - overlapLength + i);
+            data.SetRow(i, crossfadeRow);
+        }
+        for (var i = 0; i < loopCount; i++)
+        {
+            var startRow = initialLength + i * rows;
+            output.SetSubMatrix(startRow, 0, data);
+        }
+        var endIndex = initialLength + loopCount * rows;
+        var endLength = length - endIndex;
+        var endMatrix = data.SubMatrix(0, endLength, 0, cols);
+        output.SetSubMatrix(endIndex, 0, endMatrix);
+        return output;
     }
 }
