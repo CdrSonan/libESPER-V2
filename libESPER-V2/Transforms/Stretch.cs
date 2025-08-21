@@ -46,10 +46,14 @@ public static class Stretch
     private static Matrix<float> StretchData(Matrix<float> data, int length)
     {
         var rows = data.RowCount;
+        if (rows < 2)
+        {
+            throw new ArgumentException("Data must have at least two rows for interpolation.");
+        }
         var cols = data.ColumnCount;
         var output = Matrix<float>.Build.Dense(length, cols);
-        var scale = Vector<double>.Build.Dense(rows, i => i);
-        var newScale = Vector<double>.Build.Dense(length, i => i * (float)rows / length);
+        var scale = Vector<double>.Build.Dense(rows, i => i / (float)(rows - 1));
+        var newScale = Vector<double>.Build.Dense(length, i => i / (float)(length - 1));
         for (var i = 0; i < cols; i++)
         {
             var column = data.Column(i).ToDouble();
@@ -69,8 +73,8 @@ public static class Stretch
             return data.SubMatrix(0, length, 0, cols);
         }
         var output = Matrix<float>.Build.Dense(length, cols);
-        var overlapLength = (int)(length * overlap);
-        var initialLength = length - overlapLength;
+        var overlapLength = (int)(rows * overlap * 0.5);
+        var initialLength = rows - overlapLength;
         var loopCount = (int)Math.Floor((double)(length - initialLength) / rows);
         var initialMatrix = data.SubMatrix(0, initialLength, 0, cols);
         output.SetSubMatrix(0, 0, initialMatrix);

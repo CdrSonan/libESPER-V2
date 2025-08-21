@@ -10,10 +10,9 @@ public static partial class Effects
     {
         var oldPitch = audio.GetPitch();
         var voiced = audio.GetVoicedAmps();
+        var oldVolumes = voiced.RowNorms(2.0);
         var unvoiced = audio.GetUnvoiced();
-        var switchPoints = Enumerable.Range(0, audio.Length)
-            .Select(i => audio.Config.NVoiced * (int)(oldPitch[i] / newPitch[i]))
-            .ToArray();
+        var switchPoints = Vector<float>.Build.Dense(audio.Length, i => audio.Config.NVoiced * oldPitch[i] / newPitch[i]);
         for (var i = 0; i < audio.Length; ++i)
         {
             if (oldPitch[i] == 0 || newPitch[i] == 0)
@@ -21,7 +20,7 @@ public static partial class Effects
                 audio.SetVoicedAmps(i, Vector<float>.Build.Dense(audio.Config.NVoiced, 0));
                 continue;
             }
-            var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : switchPoints[i];
+            var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : (int)switchPoints[i];
             var pitchFactor = oldPitch[i] / newPitch[i];
             var fromVoicedScale = Vector<float>.Build.Dense(switchPoint, (j) => j * pitchFactor);
             var fromVoiced = WhittakerShannon.Interpolate(voiced.Row(i), fromVoicedScale);
@@ -30,7 +29,8 @@ public static partial class Effects
                 (j) => (j + switchPoint) * invNewPitch);
             var fromUnvoiced = WhittakerShannon.Interpolate(unvoiced.Row(i), fromUnvoicedScale);
             var result = Vector<float>.Build.DenseOfEnumerable(fromVoiced.Concat(fromUnvoiced));
-            audio.SetVoicedAmps(i, result);
+            var newVolume = result.L2Norm();
+            audio.SetVoicedAmps(i, result * (float)(oldVolumes[i] / newVolume));
         }
     }
     public static void PitchShift(EsperAudio audio, Vector<float> pitch)

@@ -39,7 +39,7 @@ public static partial class Effects
             if (j < resoCenter)
                 return factor * (1 - dynamics[i] * (j - resoLower) / (resoCenter - resoLower));
             if (j < resoUpper)
-                return factor * (1 - dynamics[i] * (resoUpper - j) / (resoUpper - resoUpper));
+                return factor * (1 - dynamics[i] * (resoUpper - j) / (resoUpper - resoCenter));
             return factor;
         });
         audio.SetVoicedAmps(voiced);
