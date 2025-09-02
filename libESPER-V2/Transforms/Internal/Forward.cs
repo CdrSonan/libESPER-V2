@@ -73,7 +73,9 @@ internal static class Resolve
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(
             fourierCoeffs.RowCount,
             fourierCoeffs.ColumnCount,
-            (i, j) => fourierCoeffs[i, j]);
+            (i, j) => (i == 0 || i == fourierCoeffs.RowCount - 1) ?
+                fourierCoeffs[i, j] :
+                (fourierCoeffs[i, j] + fourierCoeffs[i - 1, j] + fourierCoeffs[i + 1, j]) / 3);
         return smoothedCoeffs; //TODO: Implement smoothing
     }
 

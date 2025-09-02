@@ -130,14 +130,14 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
         if (_pitchMarkers == null) PitchMarkers(expectedPitch);
         Vector<float> oscillator = DrivenOscillator();
-        _pitchMarkerValidity = new bool[_graph.Nodes.Count - 1];
+        _pitchMarkerValidity = new bool[_pitchMarkers.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;
-        for (var i = 1; i < _graph.Nodes.Count - 2; i++)
+        for (var i = 1; i < _pitchMarkers.Count - 2; i++)
         {
-            var sectionSize = _graph.Nodes[i + 1].Id - _graph.Nodes[i].Id;
-            var previousSize = _graph.Nodes[i].Id - _graph.Nodes[i - 1].Id;
-            var nextSize = _graph.Nodes[i + 2].Id - _graph.Nodes[i + 1].Id;
+            var sectionSize = _pitchMarkers[i + 1] - _pitchMarkers[i];
+            var previousSize = _pitchMarkers[i] - _pitchMarkers[i - 1];
+            var nextSize = _pitchMarkers[i + 2] - _pitchMarkers[i + 1];
             if (previousSize <= sectionSize + 2 || nextSize <= sectionSize + 2)
             {
                 _pitchMarkerValidity[i] = true;
@@ -147,11 +147,11 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             float validError = 0;
             var previousScale = Vector<double>.Build.Dense(previousSize, j => j * ((float)sectionSize / previousSize));
             var nextScale = Vector<double>.Build.Dense(nextSize, j => j * ((float)sectionSize / nextSize));
-            var section = oscillator.SubVector(_graph.Nodes[i].Id, sectionSize);
+            var section = oscillator.SubVector(_pitchMarkers[i], sectionSize);
             var previousSection = Vector<double>.Build.Dense(previousSize);
-            oscillator.SubVector(_graph.Nodes[i - 1].Id, previousSize).MapConvert(x => x, previousSection);
+            oscillator.SubVector(_pitchMarkers[i - 1], previousSize).MapConvert(x => x, previousSection);
             var nextSection = Vector<double>.Build.Dense(nextSize);
-            oscillator.SubVector(_graph.Nodes[i + 1].Id, nextSize).MapConvert(x => x, nextSection);
+            oscillator.SubVector(_pitchMarkers[i + 1], nextSize).MapConvert(x => x, nextSection);
             var previousInterpolator = CubicSpline.InterpolatePchip(previousScale, previousSection);
             var previousInterpolated =
                 Vector<float>.Build.Dense(previousSize, j => (float)previousInterpolator.Interpolate(j));
@@ -162,8 +162,8 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             float invalidError = 0;
             for (var j = 0; j < sectionSize; j++)
             {
-                var alternative = oscillator[_graph.Nodes[i - 1].Id + j] -
-                                  oscillator[_graph.Nodes[i + 2].Id - sectionSize + j];
+                var alternative = oscillator[_pitchMarkers[i - 1] + j] -
+                                  oscillator[_pitchMarkers[i + 2] - sectionSize + j];
                 invalidError += (float)Math.Pow(alternative, 2);
             }
 
