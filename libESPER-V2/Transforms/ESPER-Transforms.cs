@@ -4,9 +4,8 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms;
 
-public class EsperForwardConfig(float? pitchOscillatorDamping, int? pitchDistanceLimit, float? expectedPitch)
+public class EsperForwardConfig(float? pitchOscillatorDamping, float? expectedPitch)
 {
-    public readonly int PitchDistanceLimit = pitchDistanceLimit ?? 10;
     public readonly float? PitchOscillatorDamping = pitchOscillatorDamping;
     public float? ExpectedPitch = expectedPitch;
 }
@@ -17,8 +16,7 @@ public static class EsperTransforms
     {
         var batches = x.Count / config.StepSize;
         var output = new EsperAudio(batches, config);
-        var pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping,
-            forwardConfig.PitchDistanceLimit);
+        var pitchDetection = new PitchDetection(x, config, forwardConfig.PitchOscillatorDamping);
         var deltas = pitchDetection.PitchDeltas(forwardConfig.ExpectedPitch);
         output.SetPitch(deltas);
 

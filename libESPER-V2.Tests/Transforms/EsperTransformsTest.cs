@@ -18,7 +18,7 @@ public class EsperTransformsTest
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Math.Sin(i * 2 * Math.PI / wavelength));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
-        var fwdConfig = new EsperForwardConfig(null, null, null);
+        var fwdConfig = new EsperForwardConfig(null, null);
         var output = EsperTransforms.Forward(waveform, config, fwdConfig);
         Assert.That(output, Is.Not.Null);
     }
@@ -44,7 +44,7 @@ public class EsperTransformsTest
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Math.Cos(i * 2 * Math.PI / wavelength));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
-        var fwdConfig = new EsperForwardConfig(null, null, null);
+        var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
         var (result, phase) = EsperTransforms.Inverse(esperAudio, (float)Math.PI/2);
         Assert.That(waveform.Count, Is.EqualTo(result.Count));

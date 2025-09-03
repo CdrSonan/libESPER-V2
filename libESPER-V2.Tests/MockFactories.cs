@@ -42,6 +42,6 @@ public static class MockFactories
     {
         var wave = Vector<float>.Build.Dense(1000, i => StackedSines(i, 256));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, 256);
-        return new PitchDetection(wave, config, 0.1f, 10);
+        return new PitchDetection(wave, config, 0.1f);
     }
 }

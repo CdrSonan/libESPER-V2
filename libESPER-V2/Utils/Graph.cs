@@ -67,5 +67,5 @@ public class Node(int id, bool isRoot, bool isLeaf)
     public bool IsLeaf = isLeaf;
     public readonly bool IsRoot = isRoot;
     public Node? Parent;
-    public double Value = 0;
+    public double Value = double.PositiveInfinity;
 }

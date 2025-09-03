@@ -1,11 +1,12 @@
-﻿using libESPER_V2.Core;
+﻿using System.ComponentModel.DataAnnotations;
+using libESPER_V2.Core;
 using libESPER_V2.Utils;
 using MathNet.Numerics.Interpolation;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms.Internal;
 
-public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float? oscillatorDamping, int distanceLimit)
+public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float? oscillatorDamping)
 {
     private readonly Graph _graph = new();
     private Vector<float>? _oscillatorProxy;
@@ -40,7 +41,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
     private void BuildPitchGraph(int edgeThreshold)
     {
-        Vector<float> oscillator = DrivenOscillator();
+        var oscillator = DrivenOscillator();
         for (var i = 1; i < oscillator.Count; i++)
             if (oscillator[i - 1] < 0 && oscillator[i] >= 0)
             {
@@ -55,34 +56,41 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
     private void FillPitchGraph(float? expectedPitch, int? edgeThreshold)
     {
-        for (var i = 1; i < _graph.Nodes.Count; i++)
+        for (var i = 0; i < _graph.Nodes.Count; i++)
         {
-            if (_graph.Nodes[i].IsRoot) continue;
-            _graph.Nodes[i].Value = PitchNodeDistance(_graph.Nodes[i - 1].Id, _graph.Nodes[i].Id, expectedPitch, 50,
-                edgeThreshold);
-            _graph.Nodes[i].Parent = _graph.Nodes[i - 1];
-            var limit = Math.Max(0, i - distanceLimit);
-            for (var j = i - 2; j >= limit; j--)
+            if (i == 0 || _graph.Nodes[i].IsRoot)
             {
-                var distance = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 50,
+                _graph.Nodes[i].Value = 0;
+                continue;
+            }
+            for (var j = i - 1; j >= 0; j--)
+            {
+                var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 50,
                     edgeThreshold);
-                if (_graph.Nodes[j].Value + distance < _graph.Nodes[i].Value)
+                if (over)
                 {
-                    _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
-                    _graph.Nodes[i].Parent = _graph.Nodes[j];
+                    if (double.IsPositiveInfinity(_graph.Nodes[i].Value))
+                    {
+                        _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
+                        _graph.Nodes[i].Parent = _graph.Nodes[j];
+                    }
+                    break;
                 }
+                if (!(_graph.Nodes[j].Value + distance < _graph.Nodes[i].Value)) continue;
+                _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
+                _graph.Nodes[i].Parent = _graph.Nodes[j];
             }
         }
     }
 
-    private double PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit)
+    private (double, bool) PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit)
     {
         var delta = id2 - id1;
-        Vector<float> oscillator = DrivenOscillator();
+        var oscillator = DrivenOscillator();
         if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
 
-        if (delta < lowerLimit || delta > upperLimit) return double.PositiveInfinity;
-        double bias = expectedPitch == null
+        if (delta < lowerLimit) return (double.PositiveInfinity, false);
+        var bias = expectedPitch == null
                 ? 1
                 : Math.Abs((double)(delta - expectedPitch.Value));
         double error = 0;
@@ -92,6 +100,8 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         {
             start1 = id1;
             start2 = id2;
+            if (id2 >= oscillator.Count - delta)
+                return delta > upperLimit ? (double.PositiveInfinity, true) : (double.PositiveInfinity, false);
         }
         else if (id2 >= oscillator.Count - delta)
         {
@@ -110,13 +120,14 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
         }
 
-        return error / Math.Pow(contrast, 2);
+        var result = error / Math.Pow(contrast, 2);
+        return delta > upperLimit ? (result, true) : (result, false);
     }
     
     public List<int> PitchMarkers(float? expectedPitch)
     {
         if (_pitchMarkers != null) return _pitchMarkers;
-        var edgeThreshold = (config.NUnvoiced - 1) * 2 / 3;
+        var edgeThreshold = config.StepSize;
         DrivenOscillator();
         BuildPitchGraph(edgeThreshold);
         FillPitchGraph(expectedPitch, edgeThreshold);
@@ -129,7 +140,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     {
         if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
         if (_pitchMarkers == null) PitchMarkers(expectedPitch);
-        Vector<float> oscillator = DrivenOscillator();
+        var oscillator = DrivenOscillator();
         _pitchMarkerValidity = new bool[_pitchMarkers.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;

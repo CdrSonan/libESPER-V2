@@ -8,15 +8,13 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>0.5.0</Version>
+    <Version>0.6.0-a</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
-    <PackageReleaseNotes>- Added fourier-space smoothing during voiced part calculation.
-        - Fixed several crashes related to pitch detection.
-        - Fixed audio stretching implementation.
+    <PackageReleaseNotes>- improved pitch marker preselection criteria
 
 pre-release version; pending further testing.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

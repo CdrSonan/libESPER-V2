@@ -18,7 +18,7 @@ public class PitchDetectionTest
         // Arrange
         var wave = Vector<float>.Build.Dense(1000, i => (float)(Math.Sin(2 * Math.PI * i / 256)));
         var config = new EsperAudioConfig(10, 129, 256);
-        var pitchDetection = new PitchDetection(wave, config, 0.1f, 10);
+        var pitchDetection = new PitchDetection(wave, config, 0.1f);
 
         // Act
         var markers = pitchDetection.PitchMarkers(null);
@@ -37,7 +37,7 @@ public class PitchDetectionTest
         // Arrange
         var wave = Vector<float>.Build.Dense(1000, i => (float)(Math.Sin(2 * Math.PI * i / 256)));
         var config = new EsperAudioConfig(10, 129, 256);
-        var pitchDetection = new PitchDetection(wave, config, 0.1f, 10);
+        var pitchDetection = new PitchDetection(wave, config, 0.1f);
 
         // Act
         var validity = pitchDetection.Validity(null);
@@ -55,7 +55,7 @@ public class PitchDetectionTest
         // Arrange
         var wave = Vector<float>.Build.Dense(1000, i => (float)(Math.Sin(2 * Math.PI * i / 256)));
         var config = new EsperAudioConfig(10, 129, 256);
-        var pitchDetection = new PitchDetection(wave, config, 0.1f, 10);
+        var pitchDetection = new PitchDetection(wave, config, 0.1f);
 
         // Act
         var deltas = pitchDetection.PitchDeltas(null);
