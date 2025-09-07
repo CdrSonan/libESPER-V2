@@ -1,7 +1,9 @@
 ﻿using MathNet.Numerics;
+using MathNet.Numerics.Interpolation;
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
+using MathNet.Numerics.Distributions;
 
 namespace libESPER_V2.Transforms.Internal;
 
@@ -68,15 +70,32 @@ internal static class Resolve
         return result;
     }
 
-    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs)
+    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity)
     {
-        var smoothedCoeffs = Matrix<Complex32>.Build.Dense(
-            fourierCoeffs.RowCount,
-            fourierCoeffs.ColumnCount,
-            (i, j) => (i == 0 || i == fourierCoeffs.RowCount - 1) ?
-                fourierCoeffs[i, j] :
-                (fourierCoeffs[i, j] + fourierCoeffs[i - 1, j] + fourierCoeffs[i + 1, j]) / 3);
-        return smoothedCoeffs; //TODO: Implement smoothing
+        const int windowSize = 10;
+        if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
+        fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : Complex32.Zero);
+        var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
+        for (var i = 0; i < fourierCoeffs.RowCount; i++)
+        {
+            var start = i - windowSize / 2;
+            if (start < 0) start = 0;
+            if (start >= fourierCoeffs.RowCount - windowSize)  start = fourierCoeffs.RowCount - windowSize;
+            var window = fourierCoeffs.SubMatrix(start, windowSize, 0, fourierCoeffs.ColumnCount);
+            var amplitudes = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
+            var phases = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
+            window.MapConvert(val => val.Magnitude, amplitudes);
+            window.MapConvert(val => val.Phase, phases);
+            var expectedAmplitudesNoise = amplitudes.ColumnSums() * (float)(4 - Math.PI) / 2; // Rayleigh distribution expectation value.
+            // Normal distribution along each of the 2 dimensions approximated assuming each sample is independently normal distributed with equal variance
+            var expectedAmplitudesVoiced = amplitudes.ColumnSums();
+            var realAmplitudes = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount, 0);
+            window.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
+            realAmplitudes = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
+            var multipliers = (realAmplitudes - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
+            smoothedCoeffs.SetRow(i, fourierCoeffs.Row(i).MapIndexed((j, val) => val * multipliers[j]));
+        }
+        return smoothedCoeffs;
     }
 
     public static Matrix<float> FromFourier(Matrix<Complex32> fourierCoeffs)

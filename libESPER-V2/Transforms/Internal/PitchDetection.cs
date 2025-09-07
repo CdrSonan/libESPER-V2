@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using libESPER_V2.Core;
+﻿using libESPER_V2.Core;
 using libESPER_V2.Utils;
 using MathNet.Numerics.Interpolation;
 using MathNet.Numerics.LinearAlgebra;
@@ -65,7 +64,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             }
             for (var j = i - 1; j >= 0; j--)
             {
-                var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 50,
+                var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 25,
                     edgeThreshold);
                 if (over)
                 {
@@ -141,7 +140,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
         if (_pitchMarkers == null) PitchMarkers(expectedPitch);
         var oscillator = DrivenOscillator();
-        _pitchMarkerValidity = new bool[_pitchMarkers.Count - 1];
+        _pitchMarkerValidity = new bool[_pitchMarkers!.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;
         for (var i = 1; i < _pitchMarkers.Count - 2; i++)

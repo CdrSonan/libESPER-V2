@@ -38,7 +38,7 @@ public class EsperTransformsTest
 
     [Test]
     [TestCase(9984, 50, 65, 129, 256)]
-    [TestCase(1024, 10, 17, 257, 256)]
+    [TestCase(1024, 50, 17, 257, 256)]
     public void Loop_SineInput_ReturnsOriginal(int length, int wavelength, int nVoiced, int nUnvoiced, int stepSize)
     {
         var waveform = Vector<float>.Build.Dense(length,
