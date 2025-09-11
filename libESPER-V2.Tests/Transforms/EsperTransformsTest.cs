@@ -3,6 +3,7 @@ using libESPER_V2.Core;
 using libESPER_V2.Transforms;
 using MathNet.Numerics.Distributions;
 using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.Statistics;
 using NUnit.Framework;
 
 namespace libESPER_V2.Tests.Transforms;
@@ -25,8 +26,8 @@ public class EsperTransformsTest
     }
     
     [Test]
-    [TestCase(10000, 50, 65, 129, 256)]
-    [TestCase(1000, 10, 17, 257, 256)]
+    [TestCase(1000, 50, 65, 129, 256)]
+    [TestCase(100, 10, 17, 257, 256)]
     public void Inverse_SineInput_ReturnsValid(int length, float pitch, int nVoiced, int nUnvoiced, int stepSize)
     {
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
@@ -57,19 +58,16 @@ public class EsperTransformsTest
     [TestCase(9984, 0.1, 65, 129, 256)]
     [TestCase(9984, 1.0, 65, 129, 256)]
     [TestCase(9984, 10.0, 65, 129, 256)]
-    //NUnvoiced controls when output noise scale is correct:
-    //129 and 257 correct for input scale somewhere between 0.1 and 1,
-    //513 correct for input scale 1.0,
-    //1025 correct for input scale somewhere between 1.0 and 10.0
-    //[TestCase(1024, 0.2, 17, 257, 256)]
     public void Loop_NoiseInput_ReturnsSimilar(int length, double scale, int nVoiced, int nUnvoiced, int stepSize)
     {
+        var generator = new Random(39);
         var waveform = Vector<float>.Build.Dense(length,
-            i => (float)Normal.Sample(0, scale));
+            i => (float)Normal.Sample(generator, 0, scale));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
         var (result, phase) = EsperTransforms.Inverse(esperAudio, (float)Math.PI/2);
+        //var test_readout = result.SumMagnitudes() / waveform.SumMagnitudes();
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
         Assert.That(result.SumMagnitudes(), Is.EqualTo(waveform.SumMagnitudes()).Within(0.25 * waveform.SumMagnitudes()));
     }

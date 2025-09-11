@@ -44,7 +44,7 @@ public class InverseResolveTests
     public void ReconstructUnvoiced_ReturnsCorrectOutputLength()
     {
         var audio = CreateMockEsperAudio(65, 129); // Mocked audio object
-        const long seed = 12345L;
+        const int seed = 12345;
         var output = InverseResolve.ReconstructUnvoiced(audio, seed);
         Assert.That(audio.Length * audio.Config.StepSize, Is.EqualTo(output.Count));
     }

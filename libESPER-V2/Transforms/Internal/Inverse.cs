@@ -111,13 +111,14 @@ internal static class InverseResolve
         return (output, phases[audio.Length - 1, 0]);
     }
 
-    public static Vector<float> ReconstructUnvoiced(EsperAudio audio, long seed)
+    public static Vector<float> ReconstructUnvoiced(EsperAudio audio, int seed)
     {
+        var generator = new Random(seed);
         var unvoiced = audio.GetUnvoiced();
         var coeffs = Matrix<double>.Build.Dense(
             audio.Length,
             2 * audio.Config.NUnvoiced,
-            (i, j) => Normal.Sample(0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
+            (i, j) => Normal.Sample(generator, 0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var norm = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced + 1;

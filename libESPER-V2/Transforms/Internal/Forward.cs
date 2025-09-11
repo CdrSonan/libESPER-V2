@@ -154,8 +154,7 @@ internal static class Resolve
             for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = validity[windowStart + j] ? window[j] - voicedWindow[j] : 0;
             Fourier.ForwardReal(unvoicedWindow, windowLength);
             for (var j = 0; j < n; j++)
-                output[i, j] = (float)Math.Pow(unvoicedWindow[2 + j], 2) +
-                               (float)Math.Pow(unvoicedWindow[2 + j + 1], 2);
+                output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 + j], 2) + Math.Pow(unvoicedWindow[2 + j + 1], 2));
         }
 
         return output;
