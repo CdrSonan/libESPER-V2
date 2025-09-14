@@ -3,7 +3,7 @@ using libESPER_V2.Core;
 using libESPER_V2.Transforms;
 using MathNet.Numerics.Distributions;
 using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.Statistics;
+using MathNet.Numerics.Random;
 using NUnit.Framework;
 
 namespace libESPER_V2.Tests.Transforms;
@@ -60,7 +60,7 @@ public class EsperTransformsTest
     [TestCase(9984, 10.0, 65, 129, 256)]
     public void Loop_NoiseInput_ReturnsSimilar(int length, double scale, int nVoiced, int nUnvoiced, int stepSize)
     {
-        var generator = new Random(39);
+        var generator = new MersenneTwister(39, true);
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Normal.Sample(generator, 0, scale));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);

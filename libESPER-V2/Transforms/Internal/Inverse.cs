@@ -3,6 +3,7 @@ using libESPER_V2.Utils;
 using MathNet.Numerics.Distributions;
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.Random;
 
 namespace libESPER_V2.Transforms.Internal;
 
@@ -113,7 +114,7 @@ internal static class InverseResolve
 
     public static Vector<float> ReconstructUnvoiced(EsperAudio audio, int seed)
     {
-        var generator = new Random(seed);
+        var generator = new MersenneTwister(seed, true);
         var unvoiced = audio.GetUnvoiced();
         var coeffs = Matrix<double>.Build.Dense(
             audio.Length,
