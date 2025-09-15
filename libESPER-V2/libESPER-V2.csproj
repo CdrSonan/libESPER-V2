@@ -8,13 +8,23 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>0.6.0-j</Version>
+    <Version>0.6.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
     <PackageReleaseNotes>- improved pitch marker preselection criteria
+- improved voiced/unvoiced separation
+- fixed possible correlation in random numbers
+- fixed volume scaling of unvoiced sounds
+- fixed "chirping" sound occuring after pitch shifting
+- improved handling of invalid pitch markers
+        
+known issues:
+- unvoiced components sound higher than expected
+- phoneme transitions get erroneously detected as unvoiced
+- some effects cause crashes
 
 pre-release version; pending further testing.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

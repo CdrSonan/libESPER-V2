@@ -32,13 +32,15 @@ internal static class PitchSync
         return result;
     }
 
-    public static (Vector<float>, bool[]) FromPitchSync(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
+    public static (Vector<float>, bool[], bool[]) FromPitchSync(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
         int length)
     {
         var markers = pitchDetection.PitchMarkers(null);
+        var pitchSyncValidity = pitchDetection.Validity(null);
         var sections = markers.Count - 1;
         var result = Vector<float>.Build.Dense(length, 0);
         var coverage = new bool[length];
+        var validity = Enumerable.Repeat(true, length).ToArray();
         for (var i = 0; i < sections; i++)
         {
             var start = markers[i];
@@ -47,10 +49,13 @@ internal static class PitchSync
             var resampled = Resample(section, count);
             result.SetSubVector(start, count, resampled);
             for (var j = start; j < start + count; j++)
+            {
                 coverage[j] = true;
+                validity[j] = pitchSyncValidity[i];
+            }
         }
 
-        return (result, coverage);
+        return (result, coverage, validity);
     }
 }
 
@@ -115,6 +120,8 @@ internal static class Resolve
             realAmplitudes = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
             var multipliers = (realAmplitudes - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
             smoothedCoeffs.SetRow(i, fourierCoeffs.Row(i).MapIndexed((j, val) => val * multipliers[j]));
+            var old = fourierCoeffs.RowNorms(2.0);
+            var neww = smoothedCoeffs.RowNorms(2.0);
         }
         return smoothedCoeffs;
     }
@@ -140,8 +147,9 @@ internal static class Resolve
     {
         var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
-        var (voicedWave, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
+        var (voicedWave, coverage, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
         var output = Matrix<float>.Build.Dense(nBatches, n);
+        var sectionValidity = new bool[nBatches];
         for (var i = 0; i < nBatches; i++)
         {
             var windowStart = i * stepSize + (stepSize / 2 - n - 1);
@@ -151,12 +159,24 @@ internal static class Resolve
             var window = wave.SubVector(windowStart, windowLength).ToArray();
             var voicedWindow = voicedWave.SubVector(windowStart, windowLength);
             var unvoicedWindow = new float[windowLength + 2]; // +2 to have enough storage for the (inplace) result
-            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = validity[windowStart + j] ? window[j] - voicedWindow[j] : 0;
-            Fourier.ForwardReal(unvoicedWindow, windowLength);
+            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? window[j] - voicedWindow[j] : 0;
+            Fourier.ForwardReal(unvoicedWindow, windowLength, FourierOptions.AsymmetricScaling);
             for (var j = 0; j < n; j++)
                 output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 + j], 2) + Math.Pow(unvoicedWindow[2 + j + 1], 2));
+            sectionValidity[i] = validity[windowStart..(windowStart + windowLength)].All(val => val);
         }
 
+        sectionValidity[0] = true;
+        sectionValidity[^1] = true;
+        for (var i = 0; i < nBatches; i++)
+        {
+            if (sectionValidity[i]) continue;
+            var leftRowOffset = 0;
+            while (!sectionValidity[i - leftRowOffset]) leftRowOffset--;
+            var rightRowOffset = 0;
+            while (!sectionValidity[i + rightRowOffset]) rightRowOffset++;
+            output.SetRow(i, (output.Row(i - leftRowOffset) + output.Row(i + rightRowOffset)) / 2);
+        }
         return output;
     }
 

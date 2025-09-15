@@ -127,7 +127,7 @@ internal static class InverseResolve
         for (var i = 0; i < audio.Length; i++)
         {
             var coeffsArr = coeffs.Row(i).ToArray();
-            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2);
+            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2, FourierOptions.AsymmetricScaling);
             var index = i * audio.Config.StepSize + offset;
             var count = audio.Config.NUnvoiced * 2 - 2;
             var localOffset = 0;

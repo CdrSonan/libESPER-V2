@@ -11,7 +11,7 @@ public static partial class Effects
         var oldPitch = audio.GetPitch();
         var voiced = audio.GetVoicedAmps();
         var oldVolumes = voiced.RowNorms(2.0);
-        var unvoiced = audio.GetUnvoiced();
+        var unvoiced = audio.GetUnvoiced() / (audio.Config.NUnvoiced * 2 - 2);
         var switchPoints = Vector<float>.Build.Dense(audio.Length, i => audio.Config.NVoiced * oldPitch[i] / newPitch[i]);
         for (var i = 0; i < audio.Length; ++i)
         {
