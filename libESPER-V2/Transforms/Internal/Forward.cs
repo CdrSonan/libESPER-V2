@@ -77,7 +77,7 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity)
     {
-        const int windowSizeBase = 10;
+        const int windowSizeBase = 6;
         if (fourierCoeffs.RowCount < windowSizeBase) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
