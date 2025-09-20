@@ -4,6 +4,7 @@ using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
 using MathNet.Numerics.Distributions;
+using MathNet.Numerics.Statistics;
 
 namespace libESPER_V2.Transforms.Internal;
 
@@ -46,6 +47,9 @@ internal static class PitchSync
             var start = markers[i];
             var count = markers[i + 1] - markers[i];
             var section = pitchSyncWave.Row(i);
+            var previousSection = pitchSyncWave.Row(i == 0 ? i : i - 1);
+            var nextSection = pitchSyncWave.Row(i == sections - 1 ? sections - 1 : i + 1);
+            section.MapIndexedInplace((i, val) => (val + previousSection[i] * ((float)i / sections) + nextSection[i] * (1 - (float)i / sections)) / 2);
             var resampled = Resample(section, count);
             result.SetSubVector(start, count, resampled);
             for (var j = start; j < start + count; j++)
@@ -77,7 +81,7 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity)
     {
-        const int windowSizeBase = 6;
+        const int windowSizeBase = 10;
         if (fourierCoeffs.RowCount < windowSizeBase) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
@@ -112,16 +116,17 @@ internal static class Resolve
             phases.MapInplace(val => float.IsNaN(val) ? 0 : val);
             window.MapConvert(val => val.Magnitude, amplitudes);
             window.MapConvert(val => val.Phase, phases);
-            var expectedAmplitudesNoise = 2 * amplitudes.ColumnSums() * (float)(4 - Math.PI) / 2; // Rayleigh distribution expectation value.
-            // Normal distribution along each of the 2 dimensions approximated assuming each sample is independently normal distributed with equal variance
+            var expectedAmplitudesNoise = amplitudes.ColumnSums() * (float)(4 - Math.PI); // Two times Rayleigh distribution expectation value.
+            // Everything under this value is likely enough to be fully unvoiced to be treated as such.
+            // This distribution assumes each fourier component is the result of sampling a normal distribution with equal variance.
+            // Under this assumption, the sums of the components follow a normal distribution with variance equal to the sum of their variances.
+            // The scale parameter of the Rayleigh distribution is based on this sum distribution variance.
             var expectedAmplitudesVoiced = amplitudes.ColumnSums();
             var realAmplitudes = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount, 0);
             window.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
             realAmplitudes = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
             var multipliers = (realAmplitudes - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
-            smoothedCoeffs.SetRow(i, fourierCoeffs.Row(i).MapIndexed((j, val) => val * multipliers[j]));
-            var old = fourierCoeffs.RowNorms(2.0);
-            var neww = smoothedCoeffs.RowNorms(2.0);
+            smoothedCoeffs.SetRow(i, (window.ColumnSums() / windowSize).MapIndexed((j, val) => val * multipliers[j]));
         }
         return smoothedCoeffs;
     }
@@ -148,7 +153,7 @@ internal static class Resolve
         var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
         var (voicedWave, coverage, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
-        var output = Matrix<float>.Build.Dense(nBatches, n);
+        var output = Matrix<float>.Build.Dense(nBatches, n, 0);
         var sectionValidity = new bool[nBatches];
         for (var i = 0; i < nBatches; i++)
         {
@@ -180,7 +185,7 @@ internal static class Resolve
         return output;
     }
 
-    public static Matrix<float> ToVoiced(
+    public static (Matrix<float>, Matrix<float>) ToVoiced(
         Matrix<Complex32> fourierCoeffs,
         PitchDetection pitchDetection,
         int stepSize,
@@ -190,7 +195,8 @@ internal static class Resolve
         var validity = pitchDetection.Validity(null);
         var start = 0;
         var end = 0;
-        var output = Matrix<float>.Build.Dense(batches, fourierCoeffs.ColumnCount * 2, 0);
+        var outputAmps = Matrix<float>.Build.Dense(batches, fourierCoeffs.ColumnCount, 0);
+        var outputPhases = Matrix<float>.Build.Dense(batches, fourierCoeffs.ColumnCount, 0);
         for (var i = 0; i < batches; i++)
         {
             while (start + 1 < markers.Count && markers[start + 1] < i * stepSize) start++;
@@ -207,12 +213,19 @@ internal static class Resolve
                 else
                     buffer += (fourierCoeffs.Row(j-1) + fourierCoeffs.Row(j + 1)) / 2;
             buffer /= count;
-            output.SetRow(i,
-                Vector<float>.Build.Dense(fourierCoeffs.ColumnCount * 2,
-                    j => j >= fourierCoeffs.ColumnCount
-                        ? buffer[j - fourierCoeffs.ColumnCount].Phase
-                        : buffer[j].Magnitude));
+            
+            var amps = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount,
+                    j => buffer[j].Magnitude);
+            var phases = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount,
+                j => buffer[j].Phase);
+            var principalPhase = phases[1];
+            phases.MapIndexedInplace((j, val) => (val - j * principalPhase) % (float)(2 * Math.PI));
+            phases.MapInplace(val => val > Math.PI ? val - (float)(2 * Math.PI) : val);
+            phases.MapInplace(val => val < -Math.PI ? val + (float)(2 * Math.PI) : val);
+            outputAmps.SetRow(i, amps);
+            outputPhases.SetRow(i, phases);
+
         }
-        return output;
+        return (outputAmps, outputPhases);
     }
 }

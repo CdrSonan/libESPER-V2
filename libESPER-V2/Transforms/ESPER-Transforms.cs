@@ -23,9 +23,9 @@ public static class EsperTransforms
         var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
         var coeffs = Resolve.ToFourier(pitchSync);
         var smoothed = Resolve.Smoothing(coeffs, pitchDetection.Validity(null));
-        var voiced = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
-        output.SetVoicedAmps(voiced.SubMatrix(0, voiced.RowCount, 0, config.NVoiced));
-        output.SetVoicedPhases(voiced.SubMatrix(0, voiced.RowCount, config.NVoiced, config.NVoiced));
+        var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
+        output.SetVoicedAmps(voicedAmps);
+        output.SetVoicedPhases(voicedPhases);
         var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, config.StepSize, config.NUnvoiced);
         output.SetUnvoiced(unvoiced);
         return output;

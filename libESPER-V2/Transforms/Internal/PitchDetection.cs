@@ -148,7 +148,8 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             var sectionSize = _pitchMarkers[i + 1] - _pitchMarkers[i];
             var previousSize = _pitchMarkers[i] - _pitchMarkers[i - 1];
             var nextSize = _pitchMarkers[i + 2] - _pitchMarkers[i + 1];
-            if (previousSize <= sectionSize + 2 || nextSize <= sectionSize + 2)
+            if (Math.Abs(previousSize - sectionSize) <= 2 && Math.Abs(nextSize - sectionSize) <= 2)
+            //if (previousSize <= sectionSize + 2 || nextSize <= sectionSize + 2)
             {
                 _pitchMarkerValidity[i] = true;
                 continue;
@@ -164,9 +165,9 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             oscillator.SubVector(_pitchMarkers[i + 1], nextSize).MapConvert(x => x, nextSection);
             var previousInterpolator = CubicSpline.InterpolatePchip(previousScale, previousSection);
             var previousInterpolated =
-                Vector<float>.Build.Dense(previousSize, j => (float)previousInterpolator.Interpolate(j));
+                Vector<float>.Build.Dense(sectionSize, j => (float)previousInterpolator.Interpolate(j));
             var nextInterpolator = CubicSpline.InterpolatePchip(nextScale, nextSection);
-            var nextInterpolated = Vector<float>.Build.Dense(nextSize, j => (float)nextInterpolator.Interpolate(j));
+            var nextInterpolated = Vector<float>.Build.Dense(sectionSize, j => (float)nextInterpolator.Interpolate(j));
             for (var j = 0; j < sectionSize; j++)
                 validError += (float)Math.Pow(section[j] - (previousInterpolated[j] + nextInterpolated[j]) / 2, 2);
             float invalidError = 0;
@@ -189,6 +190,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     {
         var validity = Validity(null);
         var markers = PitchMarkers(null);
+        var markerDiffs = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
         if (validity[index]) return markers[index + 1] - markers[index];
         var previousDelta = markers[index] - markers[index - 1];
         var nextDelta = markers[index + 2] - markers[index + 1];

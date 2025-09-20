@@ -48,7 +48,7 @@ public class EsperTransformsTest
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
-        var (result, phase) = EsperTransforms.Inverse(esperAudio, (float)Math.PI/2);
+        var (result, phase) = EsperTransforms.Inverse(esperAudio);
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
         for (var i = 0; i < result.Count; i++)
             Assert.That(result[i], Is.EqualTo(waveform[i]).Within(0.33));
@@ -66,7 +66,7 @@ public class EsperTransformsTest
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
-        var (result, phase) = EsperTransforms.Inverse(esperAudio, (float)Math.PI/2);
+        var (result, phase) = EsperTransforms.Inverse(esperAudio);
         //var test_readout = result.SumMagnitudes() / waveform.SumMagnitudes();
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
         Assert.That(result.SumMagnitudes(), Is.EqualTo(waveform.SumMagnitudes()).Within(0.25 * waveform.SumMagnitudes()));
