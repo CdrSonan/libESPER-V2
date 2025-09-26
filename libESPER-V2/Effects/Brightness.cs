@@ -20,12 +20,13 @@ public static partial class Effects
         
         var exponent = brightness.Map((val) => 1 - 0.5f * val);
         
-        var reference = voiced.RowNorms(Double.PositiveInfinity).ToSingle() * referenceMultiplier;
-        voiced.MapIndexedInplace((i, j, val) => float.Pow(val / reference[i], exponent[i]) * reference[i]);
+        var reference = voiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
+        const float eps = 1e-6f;
+        voiced.MapIndexedInplace((i, j, val) => float.Pow(val / (reference[i] + eps), exponent[i]) * reference[i]);
         
         phases.MapIndexedInplace((i, j, val) => brightness[i] > 0 ? val * (1 - brightness[i]) : val);
         
-        reference = unvoiced.RowNorms(Double.PositiveInfinity).ToSingle() * referenceMultiplier;
+        reference = unvoiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
         unvoiced.MapIndexedInplace((i, j, val) => float.Pow(val / reference[i], exponent[i]) * reference[i]);
     }
 }

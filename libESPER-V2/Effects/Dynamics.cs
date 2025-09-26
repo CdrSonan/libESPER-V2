@@ -23,12 +23,13 @@ public static partial class Effects
         
         var lowerThreshold = pitch.Map((val) => val == 0 ? 0 : thresholdBase / val);
         var upperThreshold = 2 * lowerThreshold;
+        const float eps = 1e-6f;
         voiced.MapIndexedInplace((i, j, val) =>
         {
             if (j < lowerThreshold[i])
                 return val * (1 + 0.25f * dynamics[i]);
             if (j < upperThreshold[i])
-                return val * (1 + 0.25f * dynamics[i] * (j - lowerThreshold[i]) / (upperThreshold[i] - lowerThreshold[i]));
+                return val * (1 + 0.25f * dynamics[i] * (j - lowerThreshold[i]) / (upperThreshold[i] - lowerThreshold[i] + eps));
             return val;
         });
         unvoiced.MapIndexedInplace((i, j, val) =>

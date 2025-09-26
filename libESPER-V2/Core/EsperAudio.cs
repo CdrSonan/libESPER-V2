@@ -35,18 +35,18 @@ namespace libESPER_V2.Core
         // Validation
         public void Validate()
         {
-            Vector<float> pitch = GetPitch();
+            var pitch = GetPitch();
             pitch.MapInplace(x => x < 0 ? 0 : x); // Ensure the pitch is non-negative
             SetPitch(pitch);
-            Matrix<float> amps = GetVoicedAmps();
+            var amps = GetVoicedAmps();
             amps.MapInplace(x => x < 0 ? 0 : x); // Ensure amplitudes are non-negative
             SetVoicedAmps(amps);
-            Matrix<float> phases = GetVoicedPhases();
+            var phases = GetVoicedPhases();
             phases.MapInplace(x => x % (2 * (float)Math.PI));
             phases.MapInplace(x => x < -Math.PI ? x + 2 * (float)Math.PI : x);
             phases.MapInplace(x => x > Math.PI ? x - 2 * (float)Math.PI : x);
             SetVoicedPhases(phases);
-            Matrix<float> unvoiced = GetUnvoiced();
+            var unvoiced = GetUnvoiced();
             unvoiced.MapInplace(x => x < 0 ? 0 : x); // Ensure unvoiced amplitudes are non-negative
             SetUnvoiced(unvoiced);
         }

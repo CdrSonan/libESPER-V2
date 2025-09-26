@@ -21,17 +21,18 @@ public static partial class Effects
         
         var exponent = mouth.Map((val) => 1 - 0.5f * val);
         
-        var reference = voiced.RowNorms(Double.PositiveInfinity).ToSingle() * referenceMultiplier;
-        voiced.MapIndexedInplace((i, j, val) => float.Pow(val / reference[i], exponent[i]) * reference[i]);
+        var reference = voiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
+        const float eps = 1e-6f;
+        voiced.MapIndexedInplace((i, j, val) => float.Pow(val / (reference[i] + eps), exponent[i]) * reference[i]);
         
-        reference = unvoiced.RowNorms(Double.PositiveInfinity).ToSingle() * referenceMultiplier;
-        unvoiced.MapIndexedInplace((i, j, val) => float.Pow(val / reference[i], exponent[i]) * reference[i]);
+        reference = unvoiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
+        unvoiced.MapIndexedInplace((i, j, val) => float.Pow(val / (reference[i] + eps), exponent[i]) * reference[i]);
 
-        var windowSizes = mouth.Map((val) => val < 0 ? baseWindowSize * -val : 1);
+        var windowSizes = mouth.Map((val) => val < 0 ? baseWindowSize * -val : 0);
         for (var i = 0; i < audio.Length; i++)
         {
             var start = (int)(i - windowSizes[i]);
-            var end = (int)(i + windowSizes[i]);
+            var end = (int)(i + windowSizes[i]) + 1;
             if (start < 0)
             {
                 start = 0;
