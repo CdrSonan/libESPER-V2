@@ -81,41 +81,30 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity)
     {
-        const int windowSizeBase = 10;
-        if (fourierCoeffs.RowCount < windowSizeBase) return fourierCoeffs;
+        const int windowSize = 10;
+        if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
         for (var i = 0; i < fourierCoeffs.RowCount; i++)
         {
-            var windowSize = windowSizeBase;
             var start = i - windowSize / 2;
             if (start < 0) start = 0;
             if (start >= fourierCoeffs.RowCount - windowSize)  start = fourierCoeffs.RowCount - windowSize;
-            var midpoint = start + windowSize / 2;
-            var leftPoint = start;
-            var rightPoint = start + windowSize;
-            for (var j = 0; j < windowSize / 2; j++)
-            {
-                leftPoint = midpoint - j - 1;
-                if (!validity[leftPoint])
-                {
-                    leftPoint++;
-                    break;
-                }
-            }
-            for (var j = 0; j < windowSize / 2; j++)
-            {
-                rightPoint = midpoint + j;
-                if (!validity[rightPoint]) break;
-            }
-            start = leftPoint;
-            windowSize = rightPoint - leftPoint;
             var window = fourierCoeffs.SubMatrix(start, windowSize, 0, fourierCoeffs.ColumnCount);
             var amplitudes = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
             var phases = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
             phases.MapInplace(val => float.IsNaN(val) ? 0 : val);
             window.MapConvert(val => val.Magnitude, amplitudes);
             window.MapConvert(val => val.Phase, phases);
+
+            var principalPhases = phases.Column(1);
+            var normalizedPhases = phases.MapIndexed((j, k, val) => val - k * principalPhases[j]);
+            normalizedPhases.MapInplace(val => val % (2 * (float)Math.PI));
+            normalizedPhases.MapInplace(val => val < -Math.PI ? val + 2 * (float)Math.PI : val);
+            normalizedPhases.MapInplace(val => val > Math.PI ? val - 2 * (float)Math.PI : val);
+            var normalizedWindow = Matrix<Complex32>.Build.Dense(windowSize, fourierCoeffs.ColumnCount,
+                (j, k) => Complex32.FromPolarCoordinates(amplitudes[j, k], normalizedPhases[j, k]));
+            
             var expectedAmplitudesNoise = amplitudes.ColumnSums() * (float)(4 - Math.PI); // Two times Rayleigh distribution expectation value.
             // Everything under this value is likely enough to be fully unvoiced to be treated as such.
             // This distribution assumes each fourier component is the result of sampling a normal distribution with equal variance.
@@ -123,10 +112,12 @@ internal static class Resolve
             // The scale parameter of the Rayleigh distribution is based on this sum distribution variance.
             var expectedAmplitudesVoiced = amplitudes.ColumnSums();
             var realAmplitudes = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount, 0);
-            window.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
-            realAmplitudes = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
-            var multipliers = (realAmplitudes - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
-            smoothedCoeffs.SetRow(i, (window.ColumnSums() / windowSize).MapIndexed((j, val) => val * multipliers[j]));
+            normalizedWindow.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
+            var criterion = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
+            var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
+            var row = Vector<Complex32>.Build.Dense(fourierCoeffs.ColumnCount,
+                j => Complex32.FromPolarCoordinates(realAmplitudes[j] / windowSize, phases[windowSize / 2, j]) * multipliers[j]);
+            smoothedCoeffs.SetRow(i, row);
         }
         return smoothedCoeffs;
     }
