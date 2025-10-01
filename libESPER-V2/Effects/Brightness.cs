@@ -23,10 +23,11 @@ public static partial class Effects
         var reference = voiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
         const float eps = 1e-6f;
         voiced.MapIndexedInplace((i, j, val) => float.Pow(val / (reference[i] + eps), exponent[i]) * reference[i]);
-        
+        audio.SetVoicedAmps(voiced);
         phases.MapIndexedInplace((i, j, val) => brightness[i] > 0 ? val * (1 - brightness[i]) : val);
-        
+        audio.SetVoicedPhases(phases);
         reference = unvoiced.RowNorms(double.PositiveInfinity).ToSingle() * referenceMultiplier;
         unvoiced.MapIndexedInplace((i, j, val) => float.Pow(val / reference[i], exponent[i]) * reference[i]);
+        audio.SetUnvoiced(unvoiced);
     }
 }

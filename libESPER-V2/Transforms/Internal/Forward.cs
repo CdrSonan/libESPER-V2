@@ -104,8 +104,7 @@ internal static class Resolve
             normalizedPhases.MapInplace(val => val > Math.PI ? val - 2 * (float)Math.PI : val);
             var normalizedWindow = Matrix<Complex32>.Build.Dense(windowSize, fourierCoeffs.ColumnCount,
                 (j, k) => Complex32.FromPolarCoordinates(amplitudes[j, k], normalizedPhases[j, k]));
-            
-            var expectedAmplitudesNoise = amplitudes.ColumnSums() * (float)(4 - Math.PI); // Two times Rayleigh distribution expectation value.
+            var expectedAmplitudesNoise = amplitudes.ColumnSums() * 0.6f;
             // Everything under this value is likely enough to be fully unvoiced to be treated as such.
             // This distribution assumes each fourier component is the result of sampling a normal distribution with equal variance.
             // Under this assumption, the sums of the components follow a normal distribution with variance equal to the sum of their variances.
@@ -115,8 +114,8 @@ internal static class Resolve
             normalizedWindow.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
             var criterion = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
             var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
-            var row = Vector<Complex32>.Build.Dense(fourierCoeffs.ColumnCount,
-                j => Complex32.FromPolarCoordinates(realAmplitudes[j] / windowSize, phases[windowSize / 2, j]) * multipliers[j]);
+            var row = window.ColumnSums();
+            row.MapIndexedInplace((j, val) => val * multipliers[j] / windowSize);
             smoothedCoeffs.SetRow(i, row);
         }
         return smoothedCoeffs;
@@ -158,7 +157,7 @@ internal static class Resolve
             for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? window[j] - voicedWindow[j] : 0;
             Fourier.ForwardReal(unvoicedWindow, windowLength, FourierOptions.AsymmetricScaling);
             for (var j = 0; j < n; j++)
-                output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 + j], 2) + Math.Pow(unvoicedWindow[2 + j + 1], 2));
+                output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 * j], 2) + Math.Pow(unvoicedWindow[2 * j + 1], 2));
             sectionValidity[i] = validity[windowStart..(windowStart + windowLength)].All(val => val);
         }
 

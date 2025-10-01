@@ -13,8 +13,8 @@ public static partial class Effects
             throw new ArgumentException("Breathiness vector must not contain values outside of [-1, 1].", nameof(breathiness));
         var voiced = audio.GetVoicedAmps();
         var unvoiced = audio.GetUnvoiced();
-        voiced.MapIndexedInplace((i, j, val) => breathiness[i] < 0 ? val * (1 + breathiness[i]) : val);
-        unvoiced.MapIndexedInplace((i, j, val) => breathiness[i] > 0 ? val * (1 - breathiness[i]) : val);
+        voiced.MapIndexedInplace((i, j, val) => breathiness[i] > 0 ? val * (1 - breathiness[i]) : val);
+        unvoiced.MapIndexedInplace((i, j, val) => breathiness[i] < 0 ? val * (1 + breathiness[i]) : val);
         audio.SetVoicedAmps(voiced);
         audio.SetUnvoiced(unvoiced);
     }

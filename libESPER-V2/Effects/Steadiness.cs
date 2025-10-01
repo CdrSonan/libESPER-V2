@@ -18,13 +18,8 @@ public static partial class Effects
         var meanUnvoiced = unvoiced.ColumnSums() / unvoiced.RowCount;
         
         amps.MapIndexedInplace((i, j, val) => (val - meanAmps[j]) * multiplier[i] + meanAmps[j]);
-        amps = amps.PointwiseMaximum(0);
         phases.MapIndexedInplace((i, j, val) => (val - meanPhases[j]) * multiplier[i] + meanPhases[j]);
-        phases.MapInplace(val => val % (float)(2 * Math.PI));
-        phases.MapInplace(val => val > (float)(2 * Math.PI) ? val - (float)(2 * Math.PI) : val);
-        phases.MapInplace(val => val < -(float)(2 * Math.PI) ? val + (float)(2 * Math.PI) : val);
         unvoiced.MapIndexedInplace((i, j, val) => (val - meanUnvoiced[j]) * multiplier[i] + meanUnvoiced[j]);
-        unvoiced = unvoiced.PointwiseMaximum(0);
         
         audio.SetVoicedAmps(amps);
         audio.SetVoicedPhases(phases);

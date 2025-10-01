@@ -8,7 +8,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>0.9.0-b</Version>
+    <Version>2.0.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
@@ -16,11 +16,16 @@
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
     <PackageReleaseNotes>- added safeties against potential divisions by zero to effects
 - adjusted smoothing functions to avoid NaN output with consecutive invalid pitch markers
+- fixed pitch shifting sometimes producing low quality output when no high frequencies are attenuated
+- fixed smoothing function producing minor artifacts when phases are not continuous
+- fixed breathiness control being reversed
+- fixed brightness effect not getting applied
+- removed unnecessary consistency checks from steadiness effect
         
 known issues:
 - approximate inverse transform does not produce the expected output
 
-pre-release version; pending further testing.</PackageReleaseNotes>
+Initial 2.0 release version.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

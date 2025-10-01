@@ -1,6 +1,7 @@
 using libESPER_V2.Core;
 using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
+using MathNet.Numerics.Interpolation;
 
 namespace libESPER_V2.Effects;
 
@@ -10,6 +11,7 @@ public static partial class Effects
     {
         var oldPitch = audio.GetPitch();
         var voiced = audio.GetVoicedAmps();
+        voiced = voiced.PointwiseAbs();
         var oldVolumes = voiced.RowNorms(2.0);
         var unvoiced = audio.GetUnvoiced() / (audio.Config.NUnvoiced * 2 - 2);
         var switchPoints = Vector<float>.Build.Dense(audio.Length, i => audio.Config.NVoiced * oldPitch[i] / newPitch[i]);
@@ -22,12 +24,17 @@ public static partial class Effects
             }
             var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : (int)switchPoints[i];
             var pitchFactor = oldPitch[i] / newPitch[i];
-            var fromVoicedScale = Vector<float>.Build.Dense(switchPoint, (j) => j * pitchFactor);
-            var fromVoiced = WhittakerShannon.Interpolate(voiced.Row(i), fromVoicedScale);
+            var interpolator = CubicSpline.InterpolatePchip(Vector<double>.Build.Dense(audio.Config.NVoiced, j => j),
+                voiced.Row(i).ToDouble());
+            var fromVoiced = Vector<float>.Build.Dense(switchPoint,
+                j => (float)interpolator.Interpolate(j * pitchFactor));
             var invNewPitch = (audio.Config.NUnvoiced * 2 - 2) / newPitch[i];
             var fromUnvoicedScale = Vector<float>.Build.Dense(audio.Config.NVoiced - switchPoint,
                 (j) => (j + switchPoint) * invNewPitch);
-            var fromUnvoiced = WhittakerShannon.Interpolate(unvoiced.Row(i), fromUnvoicedScale);
+            interpolator = CubicSpline.InterpolatePchip(Vector<double>.Build.Dense(audio.Config.NUnvoiced, j => j),
+                unvoiced.Row(i).ToDouble());
+            var fromUnvoiced = Vector<float>.Build.Dense(audio.Config.NVoiced - switchPoint,
+                j => (float)interpolator.Interpolate((j + switchPoint) * invNewPitch));
             var result = Vector<float>.Build.DenseOfEnumerable(fromVoiced.Concat(fromUnvoiced));
             var newVolume = result.L2Norm();
             audio.SetVoicedAmps(i, result * (float)(oldVolumes[i] / newVolume));
