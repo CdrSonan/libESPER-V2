@@ -114,6 +114,7 @@ internal static class Resolve
             normalizedWindow.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
             var criterion = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
             var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
+            multipliers.MapInplace(val => float.IsNaN(val) ? 0 : val);
             var row = window.ColumnSums();
             row.MapIndexedInplace((j, val) => val * multipliers[j] / windowSize);
             smoothedCoeffs.SetRow(i, row);

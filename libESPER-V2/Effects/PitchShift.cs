@@ -7,7 +7,7 @@ namespace libESPER_V2.Effects;
 
 public static partial class Effects
 {
-    private static void DoPitchShift(EsperAudio audio, Vector<float> newPitch)
+    private static void DoPitchShift(EsperAudio audio, Vector<float> newPitch) // TODO: secure against negative newPitch!
     {
         var oldPitch = audio.GetPitch();
         var voiced = audio.GetVoicedAmps();
