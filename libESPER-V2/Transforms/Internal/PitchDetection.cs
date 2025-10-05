@@ -64,8 +64,9 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             }
             for (var j = i - 1; j >= 0; j--)
             {
+                var previousId = _graph.Nodes[j].Parent == null ? _graph.Nodes[j].Id : _graph.Nodes[j].Parent!.Id;
                 var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 25,
-                    edgeThreshold);
+                    edgeThreshold, previousId);
                 if (over)
                 {
                     if (double.IsPositiveInfinity(_graph.Nodes[i].Value))
@@ -82,7 +83,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         }
     }
 
-    private (double, bool) PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit)
+    private (double, bool) PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit, int previousId)
     {
         var delta = id2 - id1;
         var oscillator = DrivenOscillator();
@@ -91,8 +92,10 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         if (delta < lowerLimit) return (double.PositiveInfinity, false);
         var bias = expectedPitch == null
                 ? 1
-                : Math.Abs((double)(delta - expectedPitch.Value));
-        double error = 0;
+                : 1 + float.Pow(delta - expectedPitch.Value, 2) / expectedPitch.Value;
+        var previousDelta = id1 - previousId;
+        var consistency = 1 + float.Pow(delta - previousDelta, 2) / delta;
+        float error = 0;
         double contrast = 0;
         int start1, start2;
         if (id1 < delta)
@@ -115,7 +118,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
         for (var i = 0; i < delta; i++)
         {
-            error += Math.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;
+            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias * consistency;
             contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
         }
 
@@ -190,7 +193,6 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     {
         var validity = Validity(null);
         var markers = PitchMarkers(null);
-        var markerDiffs = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
         if (validity[index]) return markers[index + 1] - markers[index];
         var previousDelta = markers[index] - markers[index - 1];
         var nextDelta = markers[index + 2] - markers[index + 1];
@@ -201,6 +203,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     {
         var oscillator = DrivenOscillator();
         var markers = PitchMarkers(expectedPitch);
+        var markerDiffs = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
         var start = 0;
         var end = 0;
         var batches = oscillator.Count / config.StepSize;

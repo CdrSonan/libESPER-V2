@@ -8,14 +8,14 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
-    <PackageReleaseNotes>- fixed formant shift and fused formant shift producing negative pitch, causing a crash
-- fixed output containing NaNs when waveform is zero for too long
+    <PackageReleaseNotes>- fixed formant shift and fused formant shift producing negative pitch, causing a crash (really this time)
+- added consistency criterion to pitch detector
         
 known issues:
 - approximate inverse transform does not produce the expected output
