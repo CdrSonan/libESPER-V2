@@ -93,7 +93,7 @@ public class EsperAudioTest
         var esperAudio = new EsperAudio(10, _defaultConfig);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => esperAudio.GetFrames(-1, 5));
-        Assert.Throws<ArgumentOutOfRangeException>(() => esperAudio.GetFrames(0, 10));
+        Assert.Throws<ArgumentOutOfRangeException>(() => esperAudio.GetFrames(0, 11));
         Assert.Throws<ArgumentOutOfRangeException>(() => esperAudio.GetFrames(6, 5));
     }
 

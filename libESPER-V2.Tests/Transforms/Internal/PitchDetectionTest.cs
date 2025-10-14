@@ -27,7 +27,7 @@ public class PitchDetectionTest
         Assert.That(markers, Is.Not.Null);
         Assert.That(markers, Is.InstanceOf<List<int>>());
         Assert.That(markers.Count > 0, "Markers list should not be empty.");
-        Assert.That(markers.Zip(markers.Skip(1), (a, b) => b - a).All(diff => diff == 256), 
+        Assert.That(markers.Zip(markers.Skip(1), (a, b) => b - a).All(diff => Math.Abs(diff - 256) <= 1), 
             "All markers should be 256 units apart.");
     }
 
@@ -64,7 +64,7 @@ public class PitchDetectionTest
         Assert.That(deltas, Is.Not.Null);
         Assert.That(deltas, Is.InstanceOf<Vector<float>>());
         Assert.That(deltas.Count > 0);
-        Assert.That(deltas.All(delta => Math.Abs(delta - 256) < 1e-5 || delta == 0), 
+        Assert.That(deltas.All(delta => Math.Abs(delta - 256) <= 1 || delta == 0), 
             "All pitch deltas should be approximately 256, or 0.");
     }
 }

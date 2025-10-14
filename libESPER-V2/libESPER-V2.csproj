@@ -8,19 +8,21 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>2.0.2</Version>
+    <Version>2.0.4</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
-    <PackageReleaseNotes>- fixed formant shift and fused formant shift producing negative pitch, causing a crash (really this time)
-- added consistency criterion to pitch detector
-        
-known issues:
-- approximate inverse transform does not produce the expected output
-
-Initial 2.0 release version.</PackageReleaseNotes>
+    <PackageReleaseNotes>- fixed errors being thrown when indexing the last element of an EsperAudio object as part of a range
+- fixed inverse transform of EsperAudio objects with partially zero pitch crashing
+- fixed pitch shifting potentially crashing when used on unvoiced audio
+- fixed brightness flag potentially causing a crash
+- fixed incorrect normalization of unvoiced part, which could lead to errors during pitch shifting
+- changed pitch detection smoothing implementation to a lowpass filter, fixing several pitch detection errors
+- improved pitch shifting interpolation to improve sound rolloff
+- adjusted tests
+</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

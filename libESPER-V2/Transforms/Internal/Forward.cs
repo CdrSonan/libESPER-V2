@@ -155,8 +155,8 @@ internal static class Resolve
             var window = wave.SubVector(windowStart, windowLength).ToArray();
             var voicedWindow = voicedWave.SubVector(windowStart, windowLength);
             var unvoicedWindow = new float[windowLength + 2]; // +2 to have enough storage for the (inplace) result
-            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? window[j] - voicedWindow[j] : 0;
-            Fourier.ForwardReal(unvoicedWindow, windowLength, FourierOptions.AsymmetricScaling);
+            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? (window[j] - voicedWindow[j]) / windowLength : 0;
+            Fourier.ForwardReal(unvoicedWindow, windowLength, FourierOptions.NoScaling);
             for (var j = 0; j < n; j++)
                 output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 * j], 2) + Math.Pow(unvoicedWindow[2 * j + 1], 2));
             sectionValidity[i] = validity[windowStart..(windowStart + windowLength)].All(val => val);

@@ -7,14 +7,21 @@ namespace libESPER_V2.Effects;
 
 public static partial class Effects
 {
-    private static void DoPitchShift(EsperAudio audio, Vector<float> newPitch) // TODO: secure against negative newPitch!
+    private static void DoPitchShift(EsperAudio audio, Vector<float> newPitch)
     {
         var oldPitch = audio.GetPitch();
         var voiced = audio.GetVoicedAmps();
-        voiced = voiced.PointwiseAbs();
+        voiced = voiced.PointwiseMaximum(0);
         var oldVolumes = voiced.RowNorms(2.0);
         var unvoiced = audio.GetUnvoiced() / (audio.Config.NUnvoiced * 2 - 2);
-        var switchPoints = Vector<float>.Build.Dense(audio.Length, i => audio.Config.NVoiced * oldPitch[i] / newPitch[i]);
+        
+        var unvoicedBatchSize = audio.Config.NUnvoiced * 2 - 2;
+        var invOldPitch = unvoicedBatchSize / oldPitch;
+        var invNewPitch = unvoicedBatchSize / newPitch;
+        var reprSwitch = audio.Config.NVoiced * invOldPitch;
+        reprSwitch = reprSwitch.PointwiseMinimum(audio.Config.NUnvoiced);
+        var srcSize = audio.Config.NVoiced + audio.Config.NUnvoiced - reprSwitch;
+        srcSize = srcSize.PointwiseMaximum(audio.Config.NVoiced);
         for (var i = 0; i < audio.Length; ++i)
         {
             if (oldPitch[i] == 0 || newPitch[i] == 0)
@@ -22,21 +29,21 @@ public static partial class Effects
                 audio.SetVoicedAmps(i, Vector<float>.Build.Dense(audio.Config.NVoiced, 0));
                 continue;
             }
-            var switchPoint = switchPoints[i] > audio.Config.NVoiced ? audio.Config.NVoiced : (int)switchPoints[i];
-            var pitchFactor = oldPitch[i] / newPitch[i];
-            var interpolator = CubicSpline.InterpolatePchip(Vector<double>.Build.Dense(audio.Config.NVoiced, j => j),
-                voiced.Row(i).ToDouble());
-            var fromVoiced = Vector<float>.Build.Dense(switchPoint,
-                j => (float)interpolator.Interpolate(j * pitchFactor));
-            var invNewPitch = (audio.Config.NUnvoiced * 2 - 2) / newPitch[i];
-            var fromUnvoicedScale = Vector<float>.Build.Dense(audio.Config.NVoiced - switchPoint,
-                (j) => (j + switchPoint) * invNewPitch);
-            interpolator = CubicSpline.InterpolatePchip(Vector<double>.Build.Dense(audio.Config.NUnvoiced, j => j),
-                unvoiced.Row(i).ToDouble());
-            var fromUnvoiced = Vector<float>.Build.Dense(audio.Config.NVoiced - switchPoint,
-                j => (float)interpolator.Interpolate((j + switchPoint) * invNewPitch));
-            var result = Vector<float>.Build.DenseOfEnumerable(fromVoiced.Concat(fromUnvoiced));
-            var newVolume = result.L2Norm();
+            var srcSpace = Vector<double>.Build.Dense((int)srcSize[i]);
+            var srcVals = Vector<double>.Build.Dense((int)srcSize[i]);
+            var tgtSpace = Vector<float>.Build.Dense(audio.Config.NVoiced, j => j * invNewPitch[i]);
+            var voicedCoords = Vector<double>.Build.Dense(audio.Config.NVoiced,
+                j => j * invOldPitch[i] > audio.Config.NUnvoiced ? audio.Config.NUnvoiced + (float)(j + 1) / (audio.Config.NVoiced + 1) : j * invOldPitch[i]);
+            srcSpace.SetSubVector(0, audio.Config.NVoiced, voicedCoords);
+            var unvoicedCoords = Vector<double>.Build.Dense((int)srcSize[i] - audio.Config.NVoiced, j => reprSwitch[i] + j);
+            srcSpace.SetSubVector(audio.Config.NVoiced, (int)srcSize[i] - audio.Config.NVoiced, unvoicedCoords);
+            srcVals.SetSubVector(0, audio.Config.NVoiced, voiced.Row(i).ToDouble());
+            srcVals.SetSubVector(audio.Config.NVoiced, (int)srcSize[i] - audio.Config.NVoiced,
+                unvoiced.Row(i).SubVector((int)reprSwitch[i], audio.Config.NUnvoiced - (int)reprSwitch[i]).ToDouble());
+            var interpolator = CubicSpline.InterpolatePchipSorted(srcSpace.ToArray(), srcVals.ToArray());
+
+            var result = Vector<float>.Build.Dense(audio.Config.NVoiced, j => (float)interpolator.Interpolate(tgtSpace[j]));
+            var newVolume = result.L2Norm() + 1e-6;
             audio.SetVoicedAmps(i, result * (float)(oldVolumes[i] / newVolume));
         }
     }

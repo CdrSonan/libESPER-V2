@@ -29,6 +29,7 @@ internal static class InverseResolve
                 Vector<float>.Build.Dense(audio.Config.NVoiced, (j) => j * workingPhase);
             components.MapIndexedInplace((j, value) => amplitudes[0, j] * (float)Math.Cos(value));
             output[i] = components.Sum();
+            if (pitch.First() == 0) continue;
             workingPhase += 2 * (float)Math.PI / pitch.First();
             workingPhase %= 2 * (float)Math.PI;
         }
@@ -49,6 +50,7 @@ internal static class InverseResolve
                     Vector<float>.Build.Dense(audio.Config.NVoiced, (k) => k * workingPhase);
                 components.MapIndexedInplace((k, value) => currentAmplitudes[k] * (float)Math.Cos(value));
                 output[audio.Config.StepSize / 2 + i * audio.Config.StepSize + j] = components.Sum();
+                if (currentPitch == 0) continue;
                 workingPhase += 2 * (float)Math.PI / currentPitch;
                 workingPhase %= 2 * (float)Math.PI;
             }
@@ -127,7 +129,7 @@ internal static class InverseResolve
         for (var i = 0; i < audio.Length; i++)
         {
             var coeffsArr = coeffs.Row(i).ToArray();
-            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2, FourierOptions.AsymmetricScaling);
+            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2, FourierOptions.NoScaling);
             var index = i * audio.Config.StepSize + offset;
             var count = audio.Config.NUnvoiced * 2 - 2;
             var localOffset = 0;

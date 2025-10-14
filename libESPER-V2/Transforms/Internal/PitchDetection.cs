@@ -1,6 +1,7 @@
 ﻿using libESPER_V2.Core;
 using libESPER_V2.Utils;
 using MathNet.Numerics.Interpolation;
+using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms.Internal;
@@ -8,39 +9,52 @@ namespace libESPER_V2.Transforms.Internal;
 public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float? oscillatorDamping)
 {
     private readonly Graph _graph = new();
-    private Vector<float>? _oscillatorProxy;
+    private Vector<float>? _smoothedProxy;
     private List<int>? _pitchMarkers;
     private bool[]? _pitchMarkerValidity;
 
 
-    private Vector<float> DrivenOscillator()
+    private Vector<float> Smoothing()
     {
-        if (_oscillatorProxy != null)
-            return _oscillatorProxy;
+        if (_smoothedProxy != null)
+            return _smoothedProxy;
         if (oscillatorDamping == null)
         {
-            _oscillatorProxy = Vector<float>.Build.Dense(audio.Count);
-            audio.CopyTo(_oscillatorProxy);
+            _smoothedProxy = Vector<float>.Build.Dense(audio.Count);
+            audio.CopyTo(_smoothedProxy);
         }
         else
         {
-            _oscillatorProxy = Vector<float>.Build.Dense(audio.Count, 0);
-            float v = 0;
-            float x = 0;
-            for (var i = 1; i < audio.Count; i++)
+            _smoothedProxy = Vector<float>.Build.Dense(audio.Count, 0);
+            var hannWindow = Vector<float>.Build.Dense(3 * config.StepSize,
+                i => float.Pow(float.Sin(i * (float)Math.PI / (3 * config.StepSize)), 2));
+            var numWindows = (int)Math.Max(Math.Ceiling(audio.Count / (float)config.StepSize) - 2, 1);
+            var paddingLength = (numWindows + 2) * config.StepSize - audio.Count;
+            var paddedAudio =
+                Vector<float>.Build.DenseOfEnumerable(audio.Concat(Vector<float>.Build.Dense(paddingLength, 0)));
+            var paddedOutput = Vector<float>.Build.Dense(audio.Count + paddingLength, 0);
+            for (var i = 0; i < numWindows; i++)
             {
-                var a = (float)(audio[i] - oscillatorDamping * v - oscillatorDamping * x);
-                v += a;
-                x += v;
-                _oscillatorProxy[i] = x;
+                var window = Vector<float>.Build.Dense(3 * config.StepSize + 2, 
+                    j => j < 3 * config.StepSize ? paddedAudio[i * config.StepSize + j] * hannWindow[j] : 0);
+                var windowArr = window.ToArray();
+                Fourier.ForwardReal(windowArr, 3 * config.StepSize);
+                window = Vector<float>.Build.DenseOfArray(windowArr);
+                window.MapIndexedInplace((j, val) => val * float.Pow(2, -(int)(j / 2)));
+                windowArr = window.ToArray();
+                Fourier.InverseReal(windowArr, 3  * config.StepSize);
+                window = Vector<float>.Build.DenseOfArray(windowArr).SubVector(0, 3 * config.StepSize);
+                var existingOutput = paddedOutput.SubVector(i * config.StepSize, 3 * config.StepSize);
+                paddedOutput.SetSubVector(i * config.StepSize, 3 * config.StepSize, existingOutput + window * hannWindow);
             }
+            _smoothedProxy = paddedOutput.SubVector(0, audio.Count);
         }
-        return _oscillatorProxy;
+        return _smoothedProxy;
     }
 
     private void BuildPitchGraph(int edgeThreshold)
     {
-        var oscillator = DrivenOscillator();
+        var oscillator = Smoothing();
         for (var i = 1; i < oscillator.Count; i++)
             if (oscillator[i - 1] < 0 && oscillator[i] >= 0)
             {
@@ -86,7 +100,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     private (double, bool) PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit, int previousId)
     {
         var delta = id2 - id1;
-        var oscillator = DrivenOscillator();
+        var oscillator = Smoothing();
         if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
 
         if (delta < lowerLimit) return (double.PositiveInfinity, false);
@@ -119,7 +133,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         for (var i = 0; i < delta; i++)
         {
             error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias * consistency;
-            contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
+            contrast += Math.Pow(oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta)), 2);
         }
 
         var result = error / Math.Pow(contrast, 2);
@@ -129,9 +143,9 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     public List<int> PitchMarkers(float? expectedPitch)
     {
         if (_pitchMarkers != null) return _pitchMarkers;
-        var edgeThreshold = config.StepSize;
-        DrivenOscillator();
-        BuildPitchGraph(edgeThreshold);
+        var edgeThreshold = 3 * config.StepSize;
+        Smoothing();
+        BuildPitchGraph(config.StepSize);
         FillPitchGraph(expectedPitch, edgeThreshold);
         _pitchMarkers = _graph.Trace();
         Validity(expectedPitch);
@@ -142,7 +156,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
     {
         if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
         if (_pitchMarkers == null) PitchMarkers(expectedPitch);
-        var oscillator = DrivenOscillator();
+        var oscillator = Smoothing();
         _pitchMarkerValidity = new bool[_pitchMarkers!.Count - 1];
         _pitchMarkerValidity[0] = true;
         _pitchMarkerValidity[^1] = true;
@@ -201,7 +215,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
     public Vector<float> PitchDeltas(float? expectedPitch)
     {
-        var oscillator = DrivenOscillator();
+        var oscillator = Smoothing();
         var markers = PitchMarkers(expectedPitch);
         var markerDiffs = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
         var start = 0;

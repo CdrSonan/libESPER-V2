@@ -66,7 +66,7 @@ namespace libESPER_V2.Core
         }
         public Matrix<float> GetFrames(int start, int end)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -86,7 +86,7 @@ namespace libESPER_V2.Core
         }
         public Vector<float> GetPitch(int start, int end)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -106,7 +106,7 @@ namespace libESPER_V2.Core
         }
         public Matrix<float> GetVoicedAmps(int start, int end)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -126,7 +126,7 @@ namespace libESPER_V2.Core
         }
         public Matrix<float> GetVoicedPhases(int start, int end)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -146,7 +146,7 @@ namespace libESPER_V2.Core
         }
         public Matrix<float> GetUnvoiced(int start, int end)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -176,7 +176,7 @@ namespace libESPER_V2.Core
         }
         public void SetFrames(int start, int end, Matrix<float> frames)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -204,7 +204,7 @@ namespace libESPER_V2.Core
         }
         public void SetPitch(int start, int end, Vector<float> pitch)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -236,7 +236,7 @@ namespace libESPER_V2.Core
         }
         public void SetVoicedAmps(int start, int end, Matrix<float> amps)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -268,7 +268,7 @@ namespace libESPER_V2.Core
         }
         public void SetVoicedPhases(int start, int end, Matrix<float> phases)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
@@ -300,7 +300,7 @@ namespace libESPER_V2.Core
         }
         public void SetUnvoiced(int start, int end, Matrix<float> unvoiced)
         {
-            if (start < 0 || end >= Length || start > end)
+            if (start < 0 || end > Length || start > end)
             {
                 throw new ArgumentOutOfRangeException(nameof(start), "Start or end index out of range.");
             }
