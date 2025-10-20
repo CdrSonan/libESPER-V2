@@ -79,9 +79,9 @@ internal static class Resolve
         return result;
     }
 
-    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity)
+    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
     {
-        const int windowSize = 10;
+        const int windowSize = 6;
         if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
@@ -116,6 +116,16 @@ internal static class Resolve
             var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
             multipliers.MapInplace(val => float.IsNaN(val) ? 0 : val);
             var row = window.ColumnSums();
+
+            if (expectedPitchVec != null)
+            {
+                var expectedIndex = (float)i * expectedPitchVec.Count / fourierCoeffs.RowCount;
+                var expectedPitch = expectedPitchVec[(int)expectedIndex];
+                if (expectedPitch == 0.0f)
+                {
+                    multipliers *= 0;
+                }
+            }
             row.MapIndexedInplace((j, val) => val * multipliers[j] / windowSize);
             smoothedCoeffs.SetRow(i, row);
         }

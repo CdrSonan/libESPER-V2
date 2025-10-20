@@ -4,10 +4,10 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms;
 
-public class EsperForwardConfig(float? pitchOscillatorDamping, float? expectedPitch)
+public class EsperForwardConfig(float? pitchOscillatorDamping, Vector<float>? expectedPitch)
 {
     public readonly float? PitchOscillatorDamping = pitchOscillatorDamping;
-    public float? ExpectedPitch = expectedPitch;
+    public Vector<float>? ExpectedPitch = expectedPitch;
 }
 
 public static class EsperTransforms
@@ -22,7 +22,7 @@ public static class EsperTransforms
 
         var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
         var coeffs = Resolve.ToFourier(pitchSync);
-        var smoothed = Resolve.Smoothing(coeffs, pitchDetection.Validity(null));
+        var smoothed = Resolve.Smoothing(coeffs, pitchDetection.Validity(null), forwardConfig.ExpectedPitch);
         var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);

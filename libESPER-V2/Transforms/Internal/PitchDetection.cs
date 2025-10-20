@@ -35,17 +35,38 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             var paddedOutput = Vector<float>.Build.Dense(audio.Count + paddingLength, 0);
             for (var i = 0; i < numWindows; i++)
             {
+                var hannWindowMod = Vector<float>.Build.Dense(3 * config.StepSize);
+                hannWindow.CopyTo(hannWindowMod);
+                if (i == 0)
+                {
+                    var subVectorA = hannWindowMod.SubVector(0, config.StepSize);
+                    var subVectorB = hannWindow.SubVector(2 * config.StepSize, config.StepSize);
+                    hannWindowMod.SetSubVector(0, config.StepSize, subVectorA + subVectorB);
+                    subVectorA = hannWindowMod.SubVector(0, 2 * config.StepSize);
+                    subVectorB = hannWindow.SubVector(config.StepSize, 2 * config.StepSize);
+                    hannWindowMod.SetSubVector(0, 2 * config.StepSize, subVectorA + subVectorB);
+                }
+                if (i == numWindows - 1)
+                {
+                    var subVectorA = hannWindowMod.SubVector(2 * config.StepSize, config.StepSize);
+                    var subVectorB = hannWindow.SubVector(0, config.StepSize);
+                    hannWindowMod.SetSubVector(2 * config.StepSize, config.StepSize, subVectorA + subVectorB);
+                    subVectorA = hannWindowMod.SubVector(config.StepSize, 2 * config.StepSize);
+                    subVectorB = hannWindow.SubVector(0, 2 * config.StepSize);
+                    hannWindowMod.SetSubVector(config.StepSize, 2 * config.StepSize, subVectorA + subVectorB);
+                }
                 var window = Vector<float>.Build.Dense(3 * config.StepSize + 2, 
-                    j => j < 3 * config.StepSize ? paddedAudio[i * config.StepSize + j] * hannWindow[j] : 0);
+                    j => j < 3 * config.StepSize ? paddedAudio[i * config.StepSize + j] : 0);
                 var windowArr = window.ToArray();
                 Fourier.ForwardReal(windowArr, 3 * config.StepSize);
                 window = Vector<float>.Build.DenseOfArray(windowArr);
-                window.MapIndexedInplace((j, val) => val * float.Pow(2, -(int)(j / 2)));
+                window.MapIndexedInplace((j, val) => val * float.Pow(0.93f, (int)(j / 2)));
                 windowArr = window.ToArray();
                 Fourier.InverseReal(windowArr, 3  * config.StepSize);
-                window = Vector<float>.Build.DenseOfArray(windowArr).SubVector(0, 3 * config.StepSize);
+                window = Vector<float>.Build.DenseOfArray(windowArr).SubVector(0, 3 * config.StepSize)
+                    .PointwiseMultiply(hannWindowMod);
                 var existingOutput = paddedOutput.SubVector(i * config.StepSize, 3 * config.StepSize);
-                paddedOutput.SetSubVector(i * config.StepSize, 3 * config.StepSize, existingOutput + window * hannWindow);
+                paddedOutput.SetSubVector(i * config.StepSize, 3 * config.StepSize, existingOutput + window);
             }
             _smoothedProxy = paddedOutput.SubVector(0, audio.Count);
         }
@@ -67,7 +88,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         if (_graph.Nodes.Count > 0) _graph.Nodes.Last().IsLeaf = true;
     }
 
-    private void FillPitchGraph(float? expectedPitch, int? edgeThreshold)
+    private void FillPitchGraph(Vector<float>? expectedPitch, int? edgeThreshold)
     {
         for (var i = 0; i < _graph.Nodes.Count; i++)
         {
@@ -97,18 +118,25 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         }
     }
 
-    private (double, bool) PitchNodeDistance(int id1, int id2, float? expectedPitch, long? lowerLimit, long? upperLimit, int previousId)
+    private (double, bool) PitchNodeDistance(int id1, int id2, Vector<float>? expectedPitchVec, long? lowerLimit, long? upperLimit, int previousId)
     {
         var delta = id2 - id1;
         var oscillator = Smoothing();
         if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
 
         if (delta < lowerLimit) return (double.PositiveInfinity, false);
-        var bias = expectedPitch == null
-                ? 1
-                : 1 + float.Pow(delta - expectedPitch.Value, 2) / expectedPitch.Value;
-        var previousDelta = id1 - previousId;
-        var consistency = 1 + float.Pow(delta - previousDelta, 2) / delta;
+        var bias = 1.0f;
+        var expectedPitch = 0.0f;
+        if (expectedPitchVec != null)
+        {
+            var expectedIndex = (float)(id1 + id2) * expectedPitchVec.Count / oscillator.Count / 2;
+            expectedPitch = expectedPitchVec[(int)expectedIndex];
+        }
+        if (expectedPitch == 0.0f)
+            return delta > upperLimit ? (0.0f, true) : (0.0f, false);
+        bias += float.Pow(delta - expectedPitch, 2) / expectedPitch;
+        //var previousDelta = id1 - previousId;
+        //var consistency = 1 + float.Pow(delta - previousDelta, 2) / delta;
         float error = 0;
         double contrast = 0;
         int start1, start2;
@@ -132,7 +160,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
         for (var i = 0; i < delta; i++)
         {
-            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias * consistency;
+            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;// * consistency;
             contrast += Math.Pow(oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta)), 2);
         }
 
@@ -140,7 +168,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         return delta > upperLimit ? (result, true) : (result, false);
     }
     
-    public List<int> PitchMarkers(float? expectedPitch)
+    public List<int> PitchMarkers(Vector<float>? expectedPitch)
     {
         if (_pitchMarkers != null) return _pitchMarkers;
         var edgeThreshold = 3 * config.StepSize;
@@ -152,7 +180,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         return _pitchMarkers;
     }
 
-    public bool[] Validity(float? expectedPitch)
+    public bool[] Validity(Vector<float>? expectedPitch)
     {
         if (_pitchMarkerValidity != null) return _pitchMarkerValidity;
         if (_pitchMarkers == null) PitchMarkers(expectedPitch);
@@ -213,11 +241,11 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         return (previousDelta + nextDelta) / 2;
     }
 
-    public Vector<float> PitchDeltas(float? expectedPitch)
+    public Vector<float> PitchDeltas(Vector<float>? expectedPitch)
     {
         var oscillator = Smoothing();
         var markers = PitchMarkers(expectedPitch);
-        var markerDiffs = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
+        var markerDiffsDebug = Vector<float>.Build.Dense(markers.Count - 1, i => markers[i + 1] - markers[i]);
         var start = 0;
         var end = 0;
         var batches = oscillator.Count / config.StepSize;
