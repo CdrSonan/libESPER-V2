@@ -99,9 +99,8 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             }
             for (var j = i - 1; j >= 0; j--)
             {
-                var previousId = _graph.Nodes[j].Parent == null ? _graph.Nodes[j].Id : _graph.Nodes[j].Parent!.Id;
                 var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 25,
-                    edgeThreshold, previousId);
+                    edgeThreshold);
                 if (over)
                 {
                     if (double.IsPositiveInfinity(_graph.Nodes[i].Value))
@@ -118,7 +117,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         }
     }
 
-    private (double, bool) PitchNodeDistance(int id1, int id2, Vector<float>? expectedPitchVec, long? lowerLimit, long? upperLimit, int previousId)
+    private (double, bool) PitchNodeDistance(int id1, int id2, Vector<float>? expectedPitchVec, long? lowerLimit, long? upperLimit)
     {
         var delta = id2 - id1;
         var oscillator = Smoothing();
@@ -126,17 +125,21 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
         if (delta < lowerLimit) return (double.PositiveInfinity, false);
         var bias = 1.0f;
-        var expectedPitch = 0.0f;
         if (expectedPitchVec != null)
         {
-            var expectedIndex = (float)(id1 + id2) * expectedPitchVec.Count / oscillator.Count / 2;
-            expectedPitch = expectedPitchVec[(int)expectedIndex];
+            var expectedIndex1 = (float)id1 * expectedPitchVec.Count / oscillator.Count;
+            var expectedIndex2 = (float)id2 * expectedPitchVec.Count / oscillator.Count;
+            var expectedPitch1 = expectedPitchVec[(int)expectedIndex1];
+            var expectedPitch2 = expectedPitchVec[(int)expectedIndex2];
+            if (expectedPitch1 == 0.0f && expectedPitch2 == 0.0f)
+                return delta > upperLimit ? (0.0f, true) : (0.0f, false);
+            var expectedPitch = (expectedPitch1 + expectedPitch2) / 2;
+            bias += float.Pow(delta - expectedPitch, 2) / expectedPitch;
         }
-        if (expectedPitch == 0.0f)
-            return delta > upperLimit ? (0.0f, true) : (0.0f, false);
-        bias += float.Pow(delta - expectedPitch, 2) / expectedPitch;
-        //var previousDelta = id1 - previousId;
-        //var consistency = 1 + float.Pow(delta - previousDelta, 2) / delta;
+        else
+        {
+            bias += delta;
+        }
         float error = 0;
         double contrast = 0;
         int start1, start2;
@@ -160,7 +163,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
         for (var i = 0; i < delta; i++)
         {
-            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;// * consistency;
+            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;
             contrast += Math.Pow(oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta)), 2);
         }
 

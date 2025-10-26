@@ -1,10 +1,7 @@
 ﻿using MathNet.Numerics;
-using MathNet.Numerics.Interpolation;
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
-using MathNet.Numerics.Distributions;
-using MathNet.Numerics.Statistics;
 
 namespace libESPER_V2.Transforms.Internal;
 
@@ -49,7 +46,7 @@ internal static class PitchSync
             var section = pitchSyncWave.Row(i);
             var previousSection = pitchSyncWave.Row(i == 0 ? i : i - 1);
             var nextSection = pitchSyncWave.Row(i == sections - 1 ? sections - 1 : i + 1);
-            section.MapIndexedInplace((i, val) => (val + previousSection[i] * ((float)i / sections) + nextSection[i] * (1 - (float)i / sections)) / 2);
+            section.MapIndexedInplace((j, val) => (val + previousSection[j] * ((float)j / sections) + nextSection[j] * (1 - (float)j / sections)) / 2);
             var resampled = Resample(section, count);
             result.SetSubVector(start, count, resampled);
             for (var j = start; j < start + count; j++)
@@ -81,7 +78,7 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
     {
-        const int windowSize = 6;
+        const int windowSize = 8;
         if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
@@ -91,20 +88,48 @@ internal static class Resolve
             if (start < 0) start = 0;
             if (start >= fourierCoeffs.RowCount - windowSize)  start = fourierCoeffs.RowCount - windowSize;
             var window = fourierCoeffs.SubMatrix(start, windowSize, 0, fourierCoeffs.ColumnCount);
-            var amplitudes = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
-            var phases = Matrix<float>.Build.Dense(windowSize, fourierCoeffs.ColumnCount, 0);
+
+            var leftSum = window.Row(0);
+            var rightSum = window.SubMatrix(1, windowSize - 1, 0, fourierCoeffs.ColumnCount).ColumnSums();
+            var optimumSplit = 1;
+            var optimumDifference = 0.0;
+            for (var j = 1; j < windowSize; j++)
+            {
+                var leftMean = leftSum / j;
+                var rightMean = rightSum / (windowSize - j);
+                var difference = (leftMean - rightMean).L2Norm();
+                if (!(difference > optimumDifference)) continue;
+                optimumSplit = j;
+                optimumDifference = difference;
+            }
+
+            int effWindowSize;
+            Matrix<Complex32> effWindow;
+            if (optimumSplit < windowSize / 2)
+            {
+                effWindowSize = windowSize - optimumSplit;
+                effWindow = window.SubMatrix(optimumSplit, effWindowSize, 0, fourierCoeffs.ColumnCount);
+            }
+            else
+            {
+                effWindowSize = optimumSplit;
+                effWindow = window.SubMatrix(0, optimumSplit, 0, fourierCoeffs.ColumnCount);
+            }
+            
+            var amplitudes = Matrix<float>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount, 0);
+            var phases = Matrix<float>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount, 0);
             phases.MapInplace(val => float.IsNaN(val) ? 0 : val);
-            window.MapConvert(val => val.Magnitude, amplitudes);
-            window.MapConvert(val => val.Phase, phases);
+            effWindow.MapConvert(val => val.Magnitude, amplitudes);
+            effWindow.MapConvert(val => val.Phase, phases);
 
             var principalPhases = phases.Column(1);
             var normalizedPhases = phases.MapIndexed((j, k, val) => val - k * principalPhases[j]);
             normalizedPhases.MapInplace(val => val % (2 * (float)Math.PI));
             normalizedPhases.MapInplace(val => val < -Math.PI ? val + 2 * (float)Math.PI : val);
             normalizedPhases.MapInplace(val => val > Math.PI ? val - 2 * (float)Math.PI : val);
-            var normalizedWindow = Matrix<Complex32>.Build.Dense(windowSize, fourierCoeffs.ColumnCount,
+            var normalizedWindow = Matrix<Complex32>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount,
                 (j, k) => Complex32.FromPolarCoordinates(amplitudes[j, k], normalizedPhases[j, k]));
-            var expectedAmplitudesNoise = amplitudes.ColumnSums() * 0.6f;
+            var expectedAmplitudesNoise = amplitudes.ColumnSums() * 0.2f;
             // Everything under this value is likely enough to be fully unvoiced to be treated as such.
             // This distribution assumes each fourier component is the result of sampling a normal distribution with equal variance.
             // Under this assumption, the sums of the components follow a normal distribution with variance equal to the sum of their variances.
@@ -115,18 +140,8 @@ internal static class Resolve
             var criterion = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
             var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
             multipliers.MapInplace(val => float.IsNaN(val) ? 0 : val);
-            var row = window.ColumnSums();
-
-            if (expectedPitchVec != null)
-            {
-                var expectedIndex = (float)i * expectedPitchVec.Count / fourierCoeffs.RowCount;
-                var expectedPitch = expectedPitchVec[(int)expectedIndex];
-                if (expectedPitch == 0.0f)
-                {
-                    multipliers *= 0;
-                }
-            }
-            row.MapIndexedInplace((j, val) => val * multipliers[j] / windowSize);
+            var row = effWindow.ColumnSums();
+            row.MapIndexedInplace((j, val) => val * multipliers[j] / effWindowSize);
             smoothedCoeffs.SetRow(i, row);
         }
         return smoothedCoeffs;
