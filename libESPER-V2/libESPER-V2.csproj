@@ -8,16 +8,23 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>2.1.0-g</Version>
+    <Version>2.1.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CdrSonan/libESPER-V2</RepositoryUrl>
     <PackageTags>speech;singing;tts;asr;vocoder;audio;pitch-detection</PackageTags>
-    <PackageReleaseNotes>- fixed hanning window being calculated incorrectly during waveform smoothing for pitch detection
-- adjusted slope of smoothing function used during pitch detection
+    <PackageReleaseNotes>Breaking:
 - changed pitch detection to accept an expected pitch vector instead of scalar
-- adjusted tests
+        
+Non-breaking:
+- fixed hanning window being calculated incorrectly during waveform smoothing for pitch detection
+- adjusted slope of smoothing function used during pitch detection
+- fixed contrast value used during pitch detection getting calculated incorrectly
+- removed consistency criterion used during pitch detection
+- added window splitting to smoothing function used during voiced-unvoiced separation
+- tuned various parameters related to voiced-unvoiced separation
+- rolled back test adjustments, making the tests stricter again
 </PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
