@@ -164,7 +164,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
         for (var i = 0; i < delta; i++)
         {
             error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;
-            contrast += Math.Pow(oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta)), 2);
+            contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
         }
 
         var result = error / Math.Pow(contrast, 2);
