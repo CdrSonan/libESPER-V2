@@ -78,6 +78,26 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
     {
+        var filter = new KalmanFilter(0.1, 0.1);
+        for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
+        {
+            var filteredReal = filter.Filter(
+                fourierCoeffs.Column(i).Map(val => (double)val.Real),
+                fourierCoeffs[0, i].Real,
+                1.0,
+                1.0);
+            var filteredImag = filter.Filter(
+                fourierCoeffs.Column(i).Map(val => (double)val.Imaginary),
+                fourierCoeffs[0, i].Imaginary,
+                1.0,
+                1.0);
+            for (var j = 0; j < fourierCoeffs.RowCount; j++)
+            {
+                fourierCoeffs[j, i] = new Complex32((float)filteredReal.Mean[j], (float)filteredImag.Mean[j]);
+            }
+        }
+
+
         const int windowSize = 8;
         if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
         fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);

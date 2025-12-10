@@ -131,7 +131,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
             var expectedIndex2 = (float)id2 * expectedPitchVec.Count / oscillator.Count;
             var expectedPitch1 = expectedPitchVec[(int)expectedIndex1];
             var expectedPitch2 = expectedPitchVec[(int)expectedIndex2];
-            if (expectedPitch1 == 0.0f && expectedPitch2 == 0.0f)
+            if (expectedPitch1 == 0.0f || expectedPitch2 == 0.0f)
                 return delta > upperLimit ? (0.0f, true) : (0.0f, false);
             var expectedPitch = (expectedPitch1 + expectedPitch2) / 2;
             bias += float.Pow(delta - expectedPitch, 2) / expectedPitch;
