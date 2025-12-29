@@ -97,6 +97,7 @@ internal static class Resolve
             }
         }
 
+        return fourierCoeffs;
 
         const int windowSize = 8;
         if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
