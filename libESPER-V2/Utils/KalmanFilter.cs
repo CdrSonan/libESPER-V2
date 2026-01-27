@@ -46,24 +46,24 @@ public class KalmanFilter
         /// <summary>
         /// Posterior mean μ_t at each time step.
         /// </summary>
-        public required Vector<double> Mean;
+        public required Vector<float> Mean;
 
         /// <summary>
         /// Posterior variance P_t of the latent mean at each time step.
         /// </summary>
-        public required Vector<double> StateVariance;
+        public required Vector<float> StateVariance;
 
         /// <summary>
         /// Robust scale estimate of residuals at each time step
         /// (can be interpreted as observation std).
         /// </summary>
-        public required Vector<double> ObservationStd;
+        public required Vector<float> ObservationStd;
 
         /// <summary>
         /// Effective measurement variance used at each step (after inflation).
         /// Mainly for debugging / diagnostics.
         /// </summary>
-        public required Vector<double> EffectiveMeasurementVariance;
+        public required Vector<float> EffectiveMeasurementVariance;
     }
 
     /// <summary>
@@ -89,10 +89,10 @@ public class KalmanFilter
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialVariance);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialObservationStd);
 
-        var mean = Vector<double>.Build.Dense(n);
-        var stateVar = Vector<double>.Build.Dense(n);
-        var obsStd = Vector<double>.Build.Dense(n);
-        var effMeasVar = Vector<double>.Build.Dense(n);
+        var mean = Vector<float>.Build.Dense(n);
+        var stateVar = Vector<float>.Build.Dense(n);
+        var obsStd = Vector<float>.Build.Dense(n);
+        var effMeasVar = Vector<float>.Build.Dense(n);
 
         // Initialize state
         var mu = initialMean;
@@ -142,10 +142,10 @@ public class KalmanFilter
                            + ScaleForgettingFactor * absResidual;
 
             // Store results
-            mean[t] = mu;
-            stateVar[t] = p;
-            obsStd[t] = sigmaObs;
-            effMeasVar[t] = rEff;
+            mean[t] = (float)mu;
+            stateVar[t] = (float)p;
+            obsStd[t] = (float)sigmaObs;
+            effMeasVar[t] = (float)rEff;
         }
 
         return new FilterResult

@@ -2,6 +2,7 @@
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
 using libESPER_V2.Utils;
+using MathNet.Numerics.Statistics;
 
 namespace libESPER_V2.Transforms.Internal;
 
@@ -91,12 +92,20 @@ internal static class Resolve
                 fourierCoeffs[0, i].Imaginary,
                 1.0,
                 1.0);
+            var madReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean).Median();
+            var madImag  = (fourierCoeffs.Column(i).Imaginary() - filteredImag.Mean).Median();
+            var factorReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean) / (2 * madReal + 0.01f);
+            var factorImag = (fourierCoeffs.Column(i).Imaginary() - filteredImag.Mean) / (2 * madImag + 0.01f);
+            factorReal = factorReal.PointwisePower(2).PointwiseMinimum(1);
+            factorImag = factorImag.PointwisePower(2).PointwiseMinimum(1);
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
             {
-                fourierCoeffs[j, i] = new Complex32((float)filteredReal.Mean[j], (float)filteredImag.Mean[j]);
+                var deviationReal = fourierCoeffs.Column(i).Real()[j] - filteredReal.Mean[j];
+                var deviationImag = fourierCoeffs.Column(i).Imaginary()[j] - filteredImag.Mean[j];
+                fourierCoeffs[j, i] = new Complex32((float)filteredReal.Mean[j] + deviationReal * factorReal[j],
+                    (float)filteredImag.Mean[j] + deviationImag * factorImag[j]);
             }
         }
-
         return fourierCoeffs;
 
         const int windowSize = 8;
