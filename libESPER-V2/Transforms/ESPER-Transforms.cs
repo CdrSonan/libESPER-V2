@@ -1,5 +1,6 @@
 ﻿using libESPER_V2.Core;
 using libESPER_V2.Transforms.Internal;
+using MathNet.Numerics;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms;
@@ -26,8 +27,8 @@ public static class EsperTransforms
         var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);
-        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, config.StepSize, config.NUnvoiced);
-        output.SetUnvoiced(unvoiced);
+        var unvoiced = Resolve.ToUnvoiced(coeffs, x, pitchDetection, config.StepSize, config.NUnvoiced);
+        output.SetUnvoiced(unvoiced * 0.8f);
         output.Validate();
         return output;
     }

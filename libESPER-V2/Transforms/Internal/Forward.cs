@@ -102,79 +102,11 @@ internal static class Resolve
             {
                 var deviationReal = fourierCoeffs.Column(i).Real()[j] - filteredReal.Mean[j];
                 var deviationImag = fourierCoeffs.Column(i).Imaginary()[j] - filteredImag.Mean[j];
-                fourierCoeffs[j, i] = new Complex32((float)filteredReal.Mean[j] + deviationReal * factorReal[j],
-                    (float)filteredImag.Mean[j] + deviationImag * factorImag[j]);
+                fourierCoeffs[j, i] = new Complex32(filteredReal.Mean[j] + deviationReal * factorReal[j],
+                    filteredImag.Mean[j] + deviationImag * factorImag[j]);
             }
         }
         return fourierCoeffs;
-
-        const int windowSize = 8;
-        if (fourierCoeffs.RowCount < windowSize) return fourierCoeffs;
-        fourierCoeffs.MapIndexedInplace((i, j, val) => validity[i] ? val : 0);
-        var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount, 0);
-        for (var i = 0; i < fourierCoeffs.RowCount; i++)
-        {
-            var start = i - windowSize / 2;
-            if (start < 0) start = 0;
-            if (start >= fourierCoeffs.RowCount - windowSize)  start = fourierCoeffs.RowCount - windowSize;
-            var window = fourierCoeffs.SubMatrix(start, windowSize, 0, fourierCoeffs.ColumnCount);
-
-            var leftSum = window.Row(0);
-            var rightSum = window.SubMatrix(1, windowSize - 1, 0, fourierCoeffs.ColumnCount).ColumnSums();
-            var optimumSplit = 1;
-            var optimumDifference = 0.0;
-            for (var j = 1; j < windowSize; j++)
-            {
-                var leftMean = leftSum / j;
-                var rightMean = rightSum / (windowSize - j);
-                var difference = (leftMean - rightMean).L2Norm();
-                if (!(difference > optimumDifference)) continue;
-                optimumSplit = j;
-                optimumDifference = difference;
-            }
-
-            int effWindowSize;
-            Matrix<Complex32> effWindow;
-            if (optimumSplit < windowSize / 2)
-            {
-                effWindowSize = windowSize - optimumSplit;
-                effWindow = window.SubMatrix(optimumSplit, effWindowSize, 0, fourierCoeffs.ColumnCount);
-            }
-            else
-            {
-                effWindowSize = optimumSplit;
-                effWindow = window.SubMatrix(0, optimumSplit, 0, fourierCoeffs.ColumnCount);
-            }
-            
-            var amplitudes = Matrix<float>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount, 0);
-            var phases = Matrix<float>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount, 0);
-            phases.MapInplace(val => float.IsNaN(val) ? 0 : val);
-            effWindow.MapConvert(val => val.Magnitude, amplitudes);
-            effWindow.MapConvert(val => val.Phase, phases);
-
-            var principalPhases = phases.Column(1);
-            var normalizedPhases = phases.MapIndexed((j, k, val) => val - k * principalPhases[j]);
-            normalizedPhases.MapInplace(val => val % (2 * (float)Math.PI));
-            normalizedPhases.MapInplace(val => val < -Math.PI ? val + 2 * (float)Math.PI : val);
-            normalizedPhases.MapInplace(val => val > Math.PI ? val - 2 * (float)Math.PI : val);
-            var normalizedWindow = Matrix<Complex32>.Build.Dense(effWindowSize, fourierCoeffs.ColumnCount,
-                (j, k) => Complex32.FromPolarCoordinates(amplitudes[j, k], normalizedPhases[j, k]));
-            var expectedAmplitudesNoise = amplitudes.ColumnSums() * 0.2f;
-            // Everything under this value is likely enough to be fully unvoiced to be treated as such.
-            // This distribution assumes each fourier component is the result of sampling a normal distribution with equal variance.
-            // Under this assumption, the sums of the components follow a normal distribution with variance equal to the sum of their variances.
-            // The scale parameter of the Rayleigh distribution is based on this sum distribution variance.
-            var expectedAmplitudesVoiced = amplitudes.ColumnSums();
-            var realAmplitudes = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount, 0);
-            normalizedWindow.ColumnSums().MapConvert(val => val.Magnitude, realAmplitudes);
-            var criterion = realAmplitudes.PointwiseMaximum(expectedAmplitudesNoise).PointwiseMinimum(expectedAmplitudesVoiced);
-            var multipliers = (criterion - expectedAmplitudesNoise) / (expectedAmplitudesVoiced - expectedAmplitudesNoise);
-            multipliers.MapInplace(val => float.IsNaN(val) ? 0 : val);
-            var row = effWindow.ColumnSums();
-            row.MapIndexedInplace((j, val) => val * multipliers[j] / effWindowSize);
-            smoothedCoeffs.SetRow(i, row);
-        }
-        return smoothedCoeffs;
     }
 
     public static Matrix<float> FromFourier(Matrix<Complex32> fourierCoeffs)
