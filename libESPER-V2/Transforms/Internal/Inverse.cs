@@ -121,7 +121,7 @@ internal static class InverseResolve
         var coeffs = Matrix<double>.Build.Dense(
             audio.Length,
             2 * audio.Config.NUnvoiced,
-            (i, j) => Normal.Sample(generator, 0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
+            (i, j) => Normal.Sample(generator, 0, unvoiced[i, j / 2] / Math.Sqrt(2)));
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var norm = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced + 1;
@@ -129,7 +129,7 @@ internal static class InverseResolve
         for (var i = 0; i < audio.Length; i++)
         {
             var coeffsArr = coeffs.Row(i).ToArray();
-            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2, FourierOptions.NoScaling);
+            Fourier.InverseReal(coeffsArr, audio.Config.NUnvoiced * 2 - 2);
             var index = i * audio.Config.StepSize + offset;
             var count = audio.Config.NUnvoiced * 2 - 2;
             var localOffset = 0;

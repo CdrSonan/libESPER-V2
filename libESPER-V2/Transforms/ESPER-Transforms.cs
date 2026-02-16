@@ -27,8 +27,8 @@ public static class EsperTransforms
         var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);
-        var unvoiced = Resolve.ToUnvoiced(coeffs, x, pitchDetection, config.StepSize, config.NUnvoiced);
-        output.SetUnvoiced(unvoiced * 0.8f);
+        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, config.StepSize, config.NUnvoiced);
+        output.SetUnvoiced(unvoiced);
         output.Validate();
         return output;
     }

@@ -4,6 +4,7 @@ using libESPER_V2.Transforms;
 using MathNet.Numerics.Distributions;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.Random;
+using MathNet.Numerics.Statistics;
 using NUnit.Framework;
 
 namespace libESPER_V2.Tests.Transforms;
@@ -66,9 +67,10 @@ public class EsperTransformsTest
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
+        //esperAudio.SetVoicedAmps(esperAudio.GetVoicedAmps() * 0);
+        //esperAudio.SetUnvoiced(esperAudio.GetUnvoiced() * 0 + (float)scale);
         var (result, phase) = EsperTransforms.Inverse(esperAudio);
-        //var test_readout = result.SumMagnitudes() / waveform.SumMagnitudes();
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
-        Assert.That(result.SumMagnitudes(), Is.EqualTo(waveform.SumMagnitudes()).Within(0.25 * waveform.SumMagnitudes()));
+        Assert.That(result.PointwisePower(2).Mean(), Is.EqualTo(waveform.PointwisePower(2).Mean()).Within(0.1 * waveform.PointwisePower(2).Mean()));
     }
 }

@@ -79,19 +79,21 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
     {
-        var filter = new KalmanFilter(0.1, 0.1);
+        var filter = new KalmanFilter(0.00001, 0.1);
         for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
         {
+            var basisReal = fourierCoeffs.Column(i).Map(val => (double)val.Real);
             var filteredReal = filter.Filter(
-                fourierCoeffs.Column(i).Map(val => (double)val.Real),
-                fourierCoeffs[0, i].Real,
-                1.0,
-                1.0);
+                basisReal,
+                basisReal[0],
+                basisReal.Variance() + 0.0001,
+                basisReal.Variance() * 0.5 + 0.0001);
+            var basisImag = fourierCoeffs.Column(i).Map(val => (double)val.Imaginary);
             var filteredImag = filter.Filter(
-                fourierCoeffs.Column(i).Map(val => (double)val.Imaginary),
-                fourierCoeffs[0, i].Imaginary,
-                1.0,
-                1.0);
+                basisImag,
+                basisImag[0],
+                basisImag.Variance() + 0.0001,
+                basisImag.Variance() * 0.5 + 0.0001);
             var madReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean).Median();
             var madImag  = (fourierCoeffs.Column(i).Imaginary() - filteredImag.Mean).Median();
             var factorReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean) / (2 * madReal + 0.01f);
@@ -131,6 +133,7 @@ internal static class Resolve
         var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
         var (voicedWave, coverage, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
+        var test = wave - voicedWave;
         var output = Matrix<float>.Build.Dense(nBatches, n, 0);
         var sectionValidity = new bool[nBatches];
         for (var i = 0; i < nBatches; i++)
@@ -142,8 +145,8 @@ internal static class Resolve
             var window = wave.SubVector(windowStart, windowLength).ToArray();
             var voicedWindow = voicedWave.SubVector(windowStart, windowLength);
             var unvoicedWindow = new float[windowLength + 2]; // +2 to have enough storage for the (inplace) result
-            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? (window[j] - voicedWindow[j]) / windowLength : 0;
-            Fourier.ForwardReal(unvoicedWindow, windowLength, FourierOptions.NoScaling);
+            for (var j = 0; j < windowLength; j++) unvoicedWindow[j] = coverage[windowStart + j] ? (window[j] - voicedWindow[j]) : 0;
+            Fourier.ForwardReal(unvoicedWindow, windowLength);
             for (var j = 0; j < n; j++)
                 output[i, j] = (float)Math.Sqrt(Math.Pow(unvoicedWindow[2 * j], 2) + Math.Pow(unvoicedWindow[2 * j + 1], 2));
             sectionValidity[i] = validity[windowStart..(windowStart + windowLength)].All(val => val);
