@@ -79,7 +79,7 @@ internal static class Resolve
 
     public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
     {
-        var filter = new KalmanFilter(0.00001, 0.1);
+        var filter = new KalmanFilter(0.001, 0.1);
         for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
         {
             var basisReal = fourierCoeffs.Column(i).Map(val => (double)val.Real);
@@ -95,11 +95,7 @@ internal static class Resolve
                 basisImag.Variance() + 0.0001,
                 basisImag.Variance() * 0.5 + 0.0001);
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
-            {
-                var safeReal = filteredReal.Mean[j] * Math.Max(Math.Abs(filteredReal.Mean[j]) - filteredReal.ObservationStd[j], 0);
-                var safeImag = filteredImag.Mean[j] * Math.Max(Math.Abs(filteredImag.Mean[j]) - filteredImag.ObservationStd[j], 0);
-                fourierCoeffs[j, i] = new Complex32(safeReal, safeImag);
-            }
+                fourierCoeffs[j, i] = new Complex32(filteredReal.Mean[j], filteredImag.Mean[j]);
         }
         return fourierCoeffs;
     }

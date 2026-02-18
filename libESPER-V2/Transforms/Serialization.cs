@@ -5,7 +5,7 @@ namespace libESPER_V2.Transforms;
 
 public static class Serialization
 {
-    private const uint FileStandard = 10;
+    private const uint FileStandard = 11;
     
     public static byte[] Serialize(EsperAudio audio)
     {
