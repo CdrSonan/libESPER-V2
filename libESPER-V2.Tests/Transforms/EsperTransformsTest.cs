@@ -67,8 +67,7 @@ public class EsperTransformsTest
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
         var fwdConfig = new EsperForwardConfig(null, null);
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
-        //esperAudio.SetVoicedAmps(esperAudio.GetVoicedAmps() * 0);
-        //esperAudio.SetUnvoiced(esperAudio.GetUnvoiced() * 0 + (float)scale);
+        esperAudio.SetVoicedAmps(esperAudio.GetVoicedAmps() * 0);
         var (result, phase) = EsperTransforms.Inverse(esperAudio);
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
         Assert.That(result.PointwisePower(2).Mean(), Is.EqualTo(waveform.PointwisePower(2).Mean()).Within(0.1 * waveform.PointwisePower(2).Mean()));

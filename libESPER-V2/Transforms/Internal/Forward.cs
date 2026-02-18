@@ -94,18 +94,11 @@ internal static class Resolve
                 basisImag[0],
                 basisImag.Variance() + 0.0001,
                 basisImag.Variance() * 0.5 + 0.0001);
-            var madReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean).Median();
-            var madImag  = (fourierCoeffs.Column(i).Imaginary() - filteredImag.Mean).Median();
-            var factorReal = (fourierCoeffs.Column(i).Real() - filteredReal.Mean) / (2 * madReal + 0.01f);
-            var factorImag = (fourierCoeffs.Column(i).Imaginary() - filteredImag.Mean) / (2 * madImag + 0.01f);
-            factorReal = factorReal.PointwisePower(2).PointwiseMinimum(1);
-            factorImag = factorImag.PointwisePower(2).PointwiseMinimum(1);
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
             {
-                var deviationReal = fourierCoeffs.Column(i).Real()[j] - filteredReal.Mean[j];
-                var deviationImag = fourierCoeffs.Column(i).Imaginary()[j] - filteredImag.Mean[j];
-                fourierCoeffs[j, i] = new Complex32(filteredReal.Mean[j] + deviationReal * factorReal[j],
-                    filteredImag.Mean[j] + deviationImag * factorImag[j]);
+                var safeReal = filteredReal.Mean[j] * Math.Max(Math.Abs(filteredReal.Mean[j]) - filteredReal.ObservationStd[j], 0);
+                var safeImag = filteredImag.Mean[j] * Math.Max(Math.Abs(filteredImag.Mean[j]) - filteredImag.ObservationStd[j], 0);
+                fourierCoeffs[j, i] = new Complex32(safeReal, safeImag);
             }
         }
         return fourierCoeffs;
