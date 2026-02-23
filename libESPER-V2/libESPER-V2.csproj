@@ -20,9 +20,9 @@
 Non-breaking:
 - tuned Kalman filter used for voiced part smoothing
 - switched pitch shifting to use zeros instead of unvoiced spectrum for extremely high frequencies
-      - adjusted synthesis time unvoiced normalization to match Rayleigh distribution scale factor to mean ratio
-      - made separation Kalman filter strength configurable
-      - added Kalman filter post-smoothing at analysis time to unvoiced component
+- adjusted synthesis time unvoiced normalization to match Rayleigh distribution scale factor to mean ratio
+- made separation Kalman filter strength configurable
+- added Kalman filter post-smoothing at analysis time to unvoiced component
 </PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>

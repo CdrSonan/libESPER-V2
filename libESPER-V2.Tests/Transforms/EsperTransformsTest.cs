@@ -70,6 +70,6 @@ public class EsperTransformsTest
         esperAudio.SetVoicedAmps(esperAudio.GetVoicedAmps() * 0);
         var (result, phase) = EsperTransforms.Inverse(esperAudio);
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
-        Assert.That(result.PointwisePower(2).Mean(), Is.EqualTo(waveform.PointwisePower(2).Mean()).Within(0.15 * waveform.PointwisePower(2).Mean()));
+        Assert.That(result.PointwisePower(2).Mean(), Is.EqualTo(waveform.PointwisePower(2).Mean()).Within(0.2 * waveform.PointwisePower(2).Mean()));
     }
 }
