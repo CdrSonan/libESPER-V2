@@ -13,7 +13,6 @@ public static partial class Effects
         var voiced = audio.GetVoicedAmps();
         voiced = voiced.PointwiseMaximum(0);
         var oldVolumes = voiced.RowNorms(2.0);
-        var unvoiced = audio.GetUnvoiced() / (audio.Config.NUnvoiced * 2 - 2);
         
         var unvoicedBatchSize = audio.Config.NUnvoiced * 2 - 2;
         var invOldPitch = unvoicedBatchSize / oldPitch;
@@ -39,7 +38,7 @@ public static partial class Effects
             srcSpace.SetSubVector(audio.Config.NVoiced, (int)srcSize[i] - audio.Config.NVoiced, unvoicedCoords);
             srcVals.SetSubVector(0, audio.Config.NVoiced, voiced.Row(i).ToDouble());
             srcVals.SetSubVector(audio.Config.NVoiced, (int)srcSize[i] - audio.Config.NVoiced,
-                unvoiced.Row(i).SubVector((int)reprSwitch[i], audio.Config.NUnvoiced - (int)reprSwitch[i]).ToDouble());
+                Vector<double>.Build.Dense((int)srcSize[i] - audio.Config.NVoiced, 0.0));
             var interpolator = CubicSpline.InterpolatePchipSorted(srcSpace.ToArray(), srcVals.ToArray());
 
             var result = Vector<float>.Build.Dense(audio.Config.NVoiced, j => (float)interpolator.Interpolate(tgtSpace[j]));

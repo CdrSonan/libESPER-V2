@@ -8,7 +8,8 @@ namespace libESPER_V2.Transforms;
 public class EsperForwardConfig(float? pitchOscillatorDamping, Vector<float>? expectedPitch)
 {
     public readonly float? PitchOscillatorDamping = pitchOscillatorDamping;
-    public Vector<float>? ExpectedPitch = expectedPitch;
+    public readonly Vector<float>? ExpectedPitch = expectedPitch;
+    public readonly double SmoothingFactor = 0.01;
 }
 
 public static class EsperTransforms
@@ -23,7 +24,7 @@ public static class EsperTransforms
 
         var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
         var coeffs = Resolve.ToFourier(pitchSync);
-        var smoothed = Resolve.Smoothing(coeffs, pitchDetection.Validity(null), forwardConfig.ExpectedPitch);
+        var smoothed = Resolve.Smoothing(coeffs, forwardConfig.SmoothingFactor);
         var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);

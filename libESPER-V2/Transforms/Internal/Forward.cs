@@ -77,9 +77,10 @@ internal static class Resolve
         return result;
     }
 
-    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, bool[] validity, Vector<float>? expectedPitchVec)
+    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, double smoothingFactor = 0.01)
     {
-        var filter = new KalmanFilter(0.001, 0.1);
+        var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount);
+        var filter = new KalmanFilter(smoothingFactor, 0.1);
         for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
         {
             var basisReal = fourierCoeffs.Column(i).Map(val => (double)val.Real);
@@ -95,9 +96,9 @@ internal static class Resolve
                 basisImag.Variance() + 0.0001,
                 basisImag.Variance() * 0.5 + 0.0001);
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
-                fourierCoeffs[j, i] = new Complex32(filteredReal.Mean[j], filteredImag.Mean[j]);
+                smoothedCoeffs[j, i] = new Complex32(filteredReal.Mean[j], filteredImag.Mean[j]);
         }
-        return fourierCoeffs;
+        return smoothedCoeffs;
     }
 
     public static Matrix<float> FromFourier(Matrix<Complex32> fourierCoeffs)
@@ -122,7 +123,6 @@ internal static class Resolve
         var nBatches = wave.Count / stepSize;
         var pitchSyncWave = FromFourier(fourierCoeffs);
         var (voicedWave, coverage, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
-        var test = wave - voicedWave;
         var output = Matrix<float>.Build.Dense(nBatches, n, 0);
         var sectionValidity = new bool[nBatches];
         for (var i = 0; i < nBatches; i++)
@@ -152,6 +152,20 @@ internal static class Resolve
             while (!sectionValidity[i + rightRowOffset]) rightRowOffset++;
             output.SetRow(i, (output.Row(i - leftRowOffset) + output.Row(i + rightRowOffset)) / 2);
         }
+
+        var filter = new KalmanFilter(0.1, 0.1);
+        for (var i = 0; i < output.ColumnCount; i++)
+        {
+            var basis = output.Column(i).ToDouble();
+            var filtered = filter.Filter(
+                basis,
+                basis[0],
+                basis.Variance() + 0.0001,
+                basis.Variance() * 0.5 + 0.0001);
+            for (var j = 0; j < output.RowCount; j++)
+                output[j, i] = filtered.Mean[j];
+        }
+
         return output;
     }
 

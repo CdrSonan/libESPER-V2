@@ -121,7 +121,7 @@ internal static class InverseResolve
         var coeffs = Matrix<double>.Build.Dense(
             audio.Length,
             2 * audio.Config.NUnvoiced,
-            (i, j) => Normal.Sample(generator, 0, unvoiced[i, j / 2] / Math.Sqrt(2)));
+            (i, j) => Normal.Sample(generator, 0, unvoiced[i, j / 2] / Math.Sqrt(Math.PI / 2)));
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var norm = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
         var offset = audio.Config.StepSize / 2 - audio.Config.NUnvoiced + 1;

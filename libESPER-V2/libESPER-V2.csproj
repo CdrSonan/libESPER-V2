@@ -8,7 +8,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>libESPER-V2</Title>
     <Authors>CdrSonan</Authors>
-    <Version>2.2.1-l</Version>
+    <Version>2.3.0</Version>
     <Description>Second version of the ESPER library for speech and singing parametrization, modification, compression and recovery</Description>
     <PackageProjectUrl>https://nova-vox.org/esper</PackageProjectUrl>
     <PackageReadmeFile>README-NUGET.md</PackageReadmeFile>
@@ -19,6 +19,10 @@
         
 Non-breaking:
 - tuned Kalman filter used for voiced part smoothing
+- switched pitch shifting to use zeros instead of unvoiced spectrum for extremely high frequencies
+      - adjusted synthesis time unvoiced normalization to match Rayleigh distribution scale factor to mean ratio
+      - made separation Kalman filter strength configurable
+      - added Kalman filter post-smoothing at analysis time to unvoiced component
 </PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
