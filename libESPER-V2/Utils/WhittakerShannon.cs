@@ -22,4 +22,9 @@ internal static class WhittakerShannon
 
         return result;
     }
+    public static Vector<float> Resample(Vector<float> signal, int n)
+    {
+        var scale = Vector<float>.Build.Dense(n, i => i * (float)signal.Count / n);
+        return Interpolate(signal, scale);
+    }
 }

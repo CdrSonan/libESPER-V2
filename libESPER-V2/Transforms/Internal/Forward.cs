@@ -6,15 +6,9 @@ using MathNet.Numerics.Statistics;
 
 namespace libESPER_V2.Transforms.Internal;
 
-internal static class PitchSync
+internal static class PitchSyncWave
 {
-    private static Vector<float> Resample(Vector<float> signal, int n)
-    {
-        var scale = Vector<float>.Build.Dense(n, i => i * (float)signal.Count / n);
-        return WhittakerShannon.Interpolate(signal, scale);
-    }
-
-    public static Matrix<float> ToPitchSync(Vector<float> wave, PitchDetection pitchDetection, int n)
+    public static Matrix<float> ConvertTo(Vector<float> wave, PitchDetection pitchDetection, int n)
     {
         var markers = pitchDetection.PitchMarkers(null);
         var sections = markers.Count - 1;
@@ -24,46 +18,17 @@ internal static class PitchSync
             var start = markers[i];
             var count = markers[i + 1] - markers[i];
             var section = wave.SubVector(start, count);
-            var resampled = Resample(section, n);
+            var resampled = WhittakerShannon.Resample(section, n);
             result.SetRow(i, resampled);
         }
 
         return result;
     }
-
-    public static (Vector<float>, bool[], bool[]) FromPitchSync(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
-        int length)
-    {
-        var markers = pitchDetection.PitchMarkers(null);
-        var pitchSyncValidity = pitchDetection.Validity(null);
-        var sections = markers.Count - 1;
-        var result = Vector<float>.Build.Dense(length, 0);
-        var coverage = new bool[length];
-        var validity = Enumerable.Repeat(true, length).ToArray();
-        for (var i = 0; i < sections; i++)
-        {
-            var start = markers[i];
-            var count = markers[i + 1] - markers[i];
-            var section = pitchSyncWave.Row(i);
-            var previousSection = pitchSyncWave.Row(i == 0 ? i : i - 1);
-            var nextSection = pitchSyncWave.Row(i == sections - 1 ? sections - 1 : i + 1);
-            section.MapIndexedInplace((j, val) => (val + previousSection[j] * ((float)j / sections) + nextSection[j] * (1 - (float)j / sections)) / 2);
-            var resampled = Resample(section, count);
-            result.SetSubVector(start, count, resampled);
-            for (var j = start; j < start + count; j++)
-            {
-                coverage[j] = true;
-                validity[j] = pitchSyncValidity[i];
-            }
-        }
-
-        return (result, coverage, validity);
-    }
 }
 
-internal static class Resolve
+internal static class PitchSyncFourierCoeffs
 {
-    public static Matrix<Complex32> ToFourier(Matrix<float> pitchSyncWave)
+    public static Matrix<Complex32> ConvertTo(Matrix<float> pitchSyncWave)
     {
         var n = pitchSyncWave.ColumnCount;
         var extension = Matrix<float>.Build.Dense(pitchSyncWave.RowCount, 2, 0);
@@ -77,7 +42,7 @@ internal static class Resolve
         return result;
     }
 
-    public static Matrix<Complex32> Smoothing(Matrix<Complex32> fourierCoeffs, double smoothingFactor = 0.01)
+    public static Matrix<Complex32> SmoothCoeffs(Matrix<Complex32> fourierCoeffs, double smoothingFactor = 0.01)
     {
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount);
         var filter = new KalmanFilter(smoothingFactor, 0.1);
@@ -100,8 +65,11 @@ internal static class Resolve
         }
         return smoothedCoeffs;
     }
+}
 
-    public static Matrix<float> FromFourier(Matrix<Complex32> fourierCoeffs)
+internal static class UnvoicedAnalysis
+{
+    private static Matrix<float> PitchSyncWaveFromCoeffs(Matrix<Complex32> fourierCoeffs)
     {
         var realCoeffs = Matrix<float>.Build.Dense(
             fourierCoeffs.RowCount,
@@ -117,12 +85,42 @@ internal static class Resolve
         return result;
     }
 
-    public static Matrix<float> ToUnvoiced(Matrix<Complex32> fourierCoeffs, Vector<float> wave,
+    private static (Vector<float>, bool[], bool[]) WaveFromPitchSyncWave(Matrix<float> pitchSyncWave, PitchDetection pitchDetection,
+        int length)
+    {
+        var markers = pitchDetection.PitchMarkers(null);
+        var pitchSyncValidity = pitchDetection.Validity(null);
+        var sections = markers.Count - 1;
+        var result = Vector<float>.Build.Dense(length, 0);
+        var coverage = new bool[length];
+        var validity = Enumerable.Repeat(true, length).ToArray();
+        for (var i = 0; i < sections; i++)
+        {
+            var start = markers[i];
+            var count = markers[i + 1] - markers[i];
+            var section = pitchSyncWave.Row(i);
+            var previousSection = pitchSyncWave.Row(i == 0 ? i : i - 1);
+            var nextSection = pitchSyncWave.Row(i == sections - 1 ? sections - 1 : i + 1);
+            section.MapIndexedInplace((j, val) => (val + previousSection[j] * ((float)j / sections) + nextSection[j] * (1 - (float)j / sections)) / 2);
+
+            var resampled = WhittakerShannon.Resample(section, count);
+            result.SetSubVector(start, count, resampled);
+            for (var j = start; j < start + count; j++)
+            {
+                coverage[j] = true;
+                validity[j] = pitchSyncValidity[i];
+            }
+        }
+
+        return (result, coverage, validity);
+    }
+
+    public static Matrix<float> MakeUnvoicedPart(Matrix<Complex32> fourierCoeffs, Vector<float> wave,
         PitchDetection pitchDetection, int stepSize, int n)
     {
         var nBatches = wave.Count / stepSize;
-        var pitchSyncWave = FromFourier(fourierCoeffs);
-        var (voicedWave, coverage, validity) = PitchSync.FromPitchSync(pitchSyncWave, pitchDetection, wave.Count);
+        var pitchSyncWave = PitchSyncWaveFromCoeffs(fourierCoeffs);
+        var (voicedWave, coverage, validity) = WaveFromPitchSyncWave(pitchSyncWave, pitchDetection, wave.Count);
         var output = Matrix<float>.Build.Dense(nBatches, n, 0);
         var sectionValidity = new bool[nBatches];
         for (var i = 0; i < nBatches; i++)
@@ -168,8 +166,11 @@ internal static class Resolve
 
         return output;
     }
+}
 
-    public static (Matrix<float>, Matrix<float>) ToVoiced(
+internal static class VoicedAnalysis
+{
+    public static (Matrix<float>, Matrix<float>) MakeVoicedPart(
         Matrix<Complex32> fourierCoeffs,
         PitchDetection pitchDetection,
         int stepSize,
@@ -197,9 +198,9 @@ internal static class Resolve
                 else
                     buffer += (fourierCoeffs.Row(j-1) + fourierCoeffs.Row(j + 1)) / 2;
             buffer /= count;
-            
+
             var amps = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount,
-                    j => buffer[j].Magnitude);
+                j => buffer[j].Magnitude);
             var phases = Vector<float>.Build.Dense(fourierCoeffs.ColumnCount,
                 j => buffer[j].Phase);
             var principalPhase = phases[1];

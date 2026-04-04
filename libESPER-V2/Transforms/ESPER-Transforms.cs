@@ -22,13 +22,13 @@ public static class EsperTransforms
         var deltas = pitchDetection.PitchDeltas(forwardConfig.ExpectedPitch);
         output.SetPitch(deltas);
 
-        var pitchSync = PitchSync.ToPitchSync(x, pitchDetection, (config.NVoiced - 1) * 2);
-        var coeffs = Resolve.ToFourier(pitchSync);
-        var smoothed = Resolve.Smoothing(coeffs, forwardConfig.SmoothingFactor);
-        var (voicedAmps, voicedPhases) = Resolve.ToVoiced(smoothed, pitchDetection, config.StepSize, batches);
+        var pitchSyncWave = PitchSyncWave.ConvertTo(x, pitchDetection, (config.NVoiced - 1) * 2);
+        var coeffs = PitchSyncFourierCoeffs.ConvertTo(pitchSyncWave);
+        var smoothedCoeffs = PitchSyncFourierCoeffs.SmoothCoeffs(coeffs, forwardConfig.SmoothingFactor);
+        var (voicedAmps, voicedPhases) = VoicedAnalysis.MakeVoicedPart(smoothedCoeffs, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);
-        var unvoiced = Resolve.ToUnvoiced(smoothed, x, pitchDetection, config.StepSize, config.NUnvoiced);
+        var unvoiced = UnvoicedAnalysis.MakeUnvoicedPart(smoothedCoeffs, x, pitchDetection, config.StepSize, config.NUnvoiced);
         output.SetUnvoiced(unvoiced);
         output.Validate();
         return output;
