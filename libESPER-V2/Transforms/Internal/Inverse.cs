@@ -87,18 +87,26 @@ internal static class InverseResolve
         var hannWindow = HanningWindow(2 * audio.Config.StepSize);
         var hannWindowLeft = hannWindow.SubVector(0, audio.Config.StepSize);
         var hannWindowRight = hannWindow.SubVector(audio.Config.StepSize, audio.Config.StepSize);
-        
+
+        var n = audio.Config.NVoiced * 2 - 2;
+
         var rightOutputSection = Vector<float>.Build.Dense(audio.Config.StepSize, 0);
         for (var i = 0; i < audio.Length; i++)
         {
             var il = i;
-            var rowArr = Vector<float>.Build.Dense(audio.Config.StepSize * 2, 
-                (j) => j > audio.Config.NVoiced ? 0 :
-                    (j % 2 == 0 ? 
+            var rowArr = Vector<float>.Build.Dense(n + 2,
+                j => j % 2 == 0 ?
                     amplitudes[il, j / 2] * (float)Math.Cos(phases[il, j / 2]) : 
-                    amplitudes[il, j / 2] * (float)Math.Sin(phases[il, j / 2]))).ToArray();
-            Fourier.InverseReal(rowArr, audio.Config.NVoiced * 2 - 2);
-            var outputSection = Vector<float>.Build.DenseOfArray(rowArr);
+                    amplitudes[il, j / 2] * (float)Math.Sin(phases[il, j / 2])).ToArray();
+            Fourier.InverseReal(rowArr, n);
+            rowArr[n] = rowArr[0];
+            rowArr[n + 1] = rowArr[1];
+            var coords = Vector<float>.Build.Dense(
+                2 * audio.Config.StepSize,
+                j => (j * n / pitch[il]) % n);
+            var outputSection = WhittakerShannon.Interpolate(
+                Vector<float>.Build.DenseOfArray(rowArr),
+                coords);
             var leftOutputSection = outputSection.SubVector(
                 0, 
                 audio.Config.StepSize).PointwiseMultiply(hannWindowLeft);

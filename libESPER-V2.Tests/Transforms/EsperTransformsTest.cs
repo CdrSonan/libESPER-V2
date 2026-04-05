@@ -40,6 +40,19 @@ public class EsperTransformsTest
     }
 
     [Test]
+    [TestCase(1000, 50, 65, 129, 256)]
+    [TestCase(100, 10, 17, 257, 256)]
+    public void Inverse_Approx_SineInput_ReturnsValid(int length, float pitch, int nVoiced, int nUnvoiced, int stepSize)
+    {
+        var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
+        var audio = new EsperAudio(length, config);
+        audio.SetPitch(Vector<float>.Build.Dense(length, pitch));
+        audio.SetVoicedAmps(Matrix<float>.Build.Dense(length, nVoiced, (i, j) => j < 3 ? 1 : 0));
+        var (result, phase) = EsperTransforms.InverseApprox(audio);
+        Assert.That(result, Is.Not.Null);
+    }
+
+    [Test]
     [TestCase(9984, 50, 65, 129, 256)]
     [TestCase(1024, 50, 17, 257, 256)]
     public void Loop_SineInput_ReturnsOriginal(int length, int wavelength, int nVoiced, int nUnvoiced, int stepSize)
