@@ -72,18 +72,7 @@ internal static class InverseResolve
     {
         var pitch = audio.GetPitch();
         var amplitudes = audio.GetVoicedAmps();
-        var phases = audio.GetVoicedPhases();
         var output = Vector<float>.Build.Dense(audio.Length * audio.Config.StepSize, 0);
-        for (var i = 1; i < audio.Length;i++)
-        {
-            var il = i;
-            phases.SetRow(i, phases.Row(i).MapIndexed((j, value) => 
-                value + phases[il - 1, j] + j * (float)Math.PI * (pitch[il - 1] + pitch[il]) / audio.Config.StepSize));
-        }
-        phases.MapInplace((value) => value % 2 * (float)Math.PI);
-        phases.MapInplace((value) => value < -Math.PI ? value + (float)Math.PI : value);
-        phases.MapInplace((value) => value > Math.PI ? value - (float)Math.PI : value);
-
         var hannWindow = HanningWindow(2 * audio.Config.StepSize);
         var hannWindowLeft = hannWindow.SubVector(0, audio.Config.StepSize);
         var hannWindowRight = hannWindow.SubVector(audio.Config.StepSize, audio.Config.StepSize);
@@ -95,15 +84,14 @@ internal static class InverseResolve
         {
             var il = i;
             var rowArr = Vector<float>.Build.Dense(n + 2,
-                j => j % 2 == 0 ?
-                    amplitudes[il, j / 2] * (float)Math.Cos(phases[il, j / 2]) : 
-                    amplitudes[il, j / 2] * (float)Math.Sin(phases[il, j / 2])).ToArray();
+                j => j % 2 == 0 ? amplitudes[il, j / 2] : 0).ToArray();
             Fourier.InverseReal(rowArr, n);
             rowArr[n] = rowArr[0];
             rowArr[n + 1] = rowArr[1];
             var coords = Vector<float>.Build.Dense(
                 2 * audio.Config.StepSize,
-                j => (j * n / pitch[il]) % n);
+                j => (phase + j * n / pitch[il]) % n);
+            phase = (2 * (float)Math.PI * phase + audio.Config.StepSize / pitch[il]) % (2 * (float)Math.PI);
             var outputSection = WhittakerShannon.Interpolate(
                 Vector<float>.Build.DenseOfArray(rowArr),
                 coords);
@@ -119,7 +107,7 @@ internal static class InverseResolve
                 audio.Config.StepSize).PointwiseMultiply(hannWindowRight);
             
         }
-        return (output, phases[audio.Length - 1, 0]);
+        return (output * n, phase);
     }
 
     public static Vector<float> ReconstructUnvoiced(EsperAudio audio, int seed)
