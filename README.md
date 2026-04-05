@@ -33,8 +33,6 @@ applications:
 graph LR;
     W1[Waveform]-->F([Forward]);
     F-->E1[ESPERAudio]
-    W1[Waveform]-->Fa([Approximate Forward]);
-    Fa-->E1[ESPERAudio]
     E2[ESPERAudio]-->B([Backward]);
     B-->W2[Waveform];
     E2[ESPERAudio]-->Ba([Approximate Backward]);

@@ -34,14 +34,6 @@ public static class EsperTransforms
         return output;
     }
 
-    public static EsperAudio ForwardApprox(Vector<float> x, EsperAudioConfig config)
-    {
-        throw new NotImplementedException();
-        var length = x.Count;
-        var output = new EsperAudio(length, config);
-        return output;
-    }
-
     public static (Vector<float>, float) Inverse(EsperAudio x, float phase = 0)
     {
         var (voiced, newPhase) = InverseResolve.ReconstructVoiced(x, phase);
