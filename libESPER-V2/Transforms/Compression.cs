@@ -14,10 +14,10 @@ public static class Compression
 
         var pitchVector = audio.GetPitch();
         var pitch = Matrix<float>.Build.Dense(audio.Length, 1, (i, j) => pitchVector[i]);
+        pitch.MapInplace(x => (float)Math.Log(Math.Max(x, 0) + eps));
         
         var voiced = audio.GetVoicedAmps();
-        var compressedVoiced = Matrix<float>.Build.Dense(voiced.RowCount, voiced.ColumnCount);
-        voiced.Map(x => (float)Math.Log(x + eps), compressedVoiced);
+        voiced.MapInplace(x => (float)Math.Log(Math.Max(x, 0) + eps));
 
         var numMelBands = audio.Config.NUnvoiced / spectralCompression;
 
@@ -28,11 +28,13 @@ public static class Compression
             var mel = Mel.MelFwd(unvoiced, numMelBands, 48000);
             compressedUnvoiced.SetRow(i, mel);
         }
+        compressedUnvoiced.MapInplace(x => (float)Math.Log(Math.Max(x, 0) + eps));
+
         var extension = Matrix<float>.Build.Dense(
             audio.Length % temporalCompression, 
             compressedAudio.Config.FrameSize(),
             0);
-        var frames = pitch.Append(compressedVoiced).Append(compressedUnvoiced).Stack(extension);
+        var frames = pitch.Append(voiced).Append(compressedUnvoiced).Stack(extension);
         var compressedFrames = Matrix<float>.Build.Dense(
             compressedAudio.CompressedLength,
             compressedAudio.Config.FrameSize(),
@@ -48,12 +50,15 @@ public static class Compression
         EsperAudio decompressedAudio = new(audio.Length, new EsperAudioConfig(audio.Config));
         var pitchVector = audio.GetPitch();
         var pitch = Matrix<float>.Build.Dense(audio.CompressedLength, 1, (i, j) => pitchVector[i]);
+        pitch.MapInplace(x => (float)Math.Max(Math.Exp(x) - eps, 0));
+
         var voiced = audio.GetVoiced();
-        var decompressedVoiced = Matrix<float>.Build.Dense(audio.CompressedLength, voiced.ColumnCount);
-        voiced.Map(x => (float)(Math.Exp(x) - eps), decompressedVoiced);
+        voiced.MapInplace(x => (float)Math.Max(Math.Exp(x) - eps, 0));
+
         var voicedPhases = Matrix<float>.Build.Dense(voiced.RowCount, voiced.ColumnCount, 0);
 
         var unvoicedMel = audio.GetUnvoiced();
+        unvoicedMel.MapInplace(x => (float)Math.Max(Math.Exp(x) - eps, 0));
         var unvoiced = Matrix<float>.Build.Dense(audio.CompressedLength, audio.Config.NUnvoiced);
         for (var i = 0; i < audio.CompressedLength; i++)
         {
@@ -62,7 +67,7 @@ public static class Compression
             unvoiced.SetRow(i, unvoicedFrame);
         }
 
-        var frames = pitch.Append(decompressedVoiced).Append(voicedPhases).Append(unvoiced);
+        var frames = pitch.Append(voiced).Append(voicedPhases).Append(unvoiced);
         var decompressedFrames = Matrix<float>.Build.Dense(
             audio.Length,
             decompressedAudio.Config.FrameSize(),
