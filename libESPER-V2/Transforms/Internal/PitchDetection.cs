@@ -3,8 +3,43 @@ using libESPER_V2.Utils;
 using MathNet.Numerics.Interpolation;
 using MathNet.Numerics.IntegralTransforms;
 using MathNet.Numerics.LinearAlgebra;
+using ILGPU;
+using ILGPU.Runtime;
+using ILGPU.Algorithms;
+using ILGPU.Runtime.Cuda;
+using ILGPU.Runtime.CPU;
 
 namespace libESPER_V2.Transforms.Internal;
+
+public static class PitchDetectionGpu
+{
+    public static void PitchNodeDistanceKernel(
+        Index1D index,
+        ArrayView1D<int, Stride1D.Dense> start1View,
+        ArrayView1D<int, Stride1D.Dense> start2View,
+        ArrayView1D<int, Stride1D.Dense> deltaView,
+        ArrayView1D<float, Stride1D.Dense> biasView,
+        ArrayView1D<float, Stride1D.Dense> oscillatorView,
+        ArrayView1D<double, Stride1D.Dense> resultView)
+    {
+        int start1 = start1View[index];
+        int start2 = start2View[index];
+        int delta = deltaView[index];
+        float bias = biasView[index];
+        
+        float error = 0f;
+        double contrast = 0.0;
+        
+        for (int i = 0; i < delta; i++)
+        {
+            float diff = oscillatorView[start1 + i] - oscillatorView[start2 + i];
+            error += diff * diff * bias;
+            contrast += oscillatorView[start1 + i] * XMath.Sin(2.0 * XMath.PI * ((double)i / delta));
+        }
+
+        resultView[index] = error / (contrast * contrast);
+    }
+}
 
 public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float? oscillatorDamping)
 {
@@ -90,86 +125,113 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
     private void FillPitchGraph(Vector<float>? expectedPitch, int? edgeThreshold)
     {
-        for (var i = 0; i < _graph.Nodes.Count; i++)
+        var oscillator = Smoothing();
+        int lowerLimit = 25;
+        int maxEdgeThreshold = edgeThreshold ?? int.MaxValue;
+        
+        var pairIndices = new List<(int j, int i)>();
+        var start1List = new List<int>();
+        var start2List = new List<int>();
+        var deltaList = new List<int>();
+        var biasList = new List<float>();
+
+        for (int i = 0; i < _graph.Nodes.Count; i++)
         {
             if (i == 0 || _graph.Nodes[i].IsRoot)
             {
                 _graph.Nodes[i].Value = 0;
                 continue;
             }
-            for (var j = i - 1; j >= 0; j--)
+            
+            for (int j = i - 1; j >= 0; j--)
             {
-                var (distance, over) = PitchNodeDistance(_graph.Nodes[j].Id, _graph.Nodes[i].Id, expectedPitch, 25,
-                    edgeThreshold);
-                if (over)
+                int id1 = _graph.Nodes[j].Id;
+                int id2 = _graph.Nodes[i].Id;
+                int delta = id2 - id1;
+                
+                if (delta > maxEdgeThreshold) break;
+                if (delta < lowerLimit) continue;
+                
+                int start1, start2;
+                if (id1 < delta)
                 {
-                    if (double.IsPositiveInfinity(_graph.Nodes[i].Value))
-                    {
-                        _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
-                        _graph.Nodes[i].Parent = _graph.Nodes[j];
-                    }
-                    break;
+                    start1 = id1; start2 = id2;
+                    if (id2 >= oscillator.Count - delta) continue;
                 }
-                if (!(_graph.Nodes[j].Value + distance < _graph.Nodes[i].Value)) continue;
-                _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
-                _graph.Nodes[i].Parent = _graph.Nodes[j];
+                else if (id2 >= oscillator.Count - delta)
+                {
+                    start1 = id1 - delta; start2 = id2 - delta;
+                }
+                else
+                {
+                    start1 = id1 - delta / 2; start2 = id2 - delta / 2;
+                }
+
+                float bias = 1.0f;
+                if (expectedPitch != null)
+                {
+                    float expectedIndex1 = (float)id1 * expectedPitch.Count / oscillator.Count;
+                    float expectedIndex2 = (float)id2 * expectedPitch.Count / oscillator.Count;
+                    float ep1 = expectedPitch[(int)expectedIndex1];
+                    float ep2 = expectedPitch[(int)expectedIndex2];
+                    if (ep1 == 0.0f || ep2 == 0.0f) continue;
+                    
+                    float ep = (ep1 + ep2) / 2f;
+                    bias += float.Pow(delta - ep, 2) / ep;
+                }
+                else
+                {
+                    bias += delta;
+                }
+
+                pairIndices.Add((j, i));
+                start1List.Add(start1);
+                start2List.Add(start2);
+                deltaList.Add(delta);
+                biasList.Add(bias);
+            }
+        }
+
+        if (pairIndices.Count > 0)
+        {
+            using var context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms());
+            var accelerator = context.GetPreferredDevice(preferCPU: false).CreateAccelerator(context);
+            
+            using var start1Buffer = accelerator.Allocate1D(start1List.ToArray());
+            using var start2Buffer = accelerator.Allocate1D(start2List.ToArray());
+            using var deltaBuffer = accelerator.Allocate1D(deltaList.ToArray());
+            using var biasBuffer = accelerator.Allocate1D(biasList.ToArray());
+            using var oscBuffer = accelerator.Allocate1D(oscillator.ToArray());
+            using var resultBuffer = accelerator.Allocate1D<double>(pairIndices.Count);
+
+            var kernel = accelerator.LoadAutoGroupedStreamKernel<
+                Index1D, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, 
+                ArrayView1D<int, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
+                ArrayView1D<float, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(
+                PitchDetectionGpu.PitchNodeDistanceKernel);
+
+            kernel((int)pairIndices.Count, start1Buffer.View, start2Buffer.View, deltaBuffer.View, 
+                   biasBuffer.View, oscBuffer.View, resultBuffer.View);
+                   
+            accelerator.Synchronize();
+            
+            double[] results = resultBuffer.GetAsArray1D();
+            accelerator.Dispose();
+
+            for (int k = 0; k < pairIndices.Count; k++)
+            {
+                var (j, i) = pairIndices[k];
+                double distance = results[k];
+                
+                if (double.IsPositiveInfinity(_graph.Nodes[i].Value) || _graph.Nodes[j].Value + distance < _graph.Nodes[i].Value)
+                {
+                    _graph.Nodes[i].Value = _graph.Nodes[j].Value + distance;
+                    _graph.Nodes[i].Parent = _graph.Nodes[j];
+                }
             }
         }
     }
 
-    private (double, bool) PitchNodeDistance(int id1, int id2, Vector<float>? expectedPitchVec, long? lowerLimit, long? upperLimit)
-    {
-        var delta = id2 - id1;
-        var oscillator = Smoothing();
-        if (delta < 0) throw new ArgumentException("id2 must be greater than id1");
-
-        if (delta < lowerLimit) return (double.PositiveInfinity, false);
-        var bias = 1.0f;
-        if (expectedPitchVec != null)
-        {
-            var expectedIndex1 = (float)id1 * expectedPitchVec.Count / oscillator.Count;
-            var expectedIndex2 = (float)id2 * expectedPitchVec.Count / oscillator.Count;
-            var expectedPitch1 = expectedPitchVec[(int)expectedIndex1];
-            var expectedPitch2 = expectedPitchVec[(int)expectedIndex2];
-            if (expectedPitch1 == 0.0f || expectedPitch2 == 0.0f)
-                return delta > upperLimit ? (0.0f, true) : (0.0f, false);
-            var expectedPitch = (expectedPitch1 + expectedPitch2) / 2;
-            bias += float.Pow(delta - expectedPitch, 2) / expectedPitch;
-        }
-        else
-        {
-            bias += delta;
-        }
-        float error = 0;
-        double contrast = 0;
-        int start1, start2;
-        if (id1 < delta)
-        {
-            start1 = id1;
-            start2 = id2;
-            if (id2 >= oscillator.Count - delta)
-                return delta > upperLimit ? (double.PositiveInfinity, true) : (double.PositiveInfinity, false);
-        }
-        else if (id2 >= oscillator.Count - delta)
-        {
-            start1 = id1 - delta;
-            start2 = id2 - delta;
-        }
-        else
-        {
-            start1 = id1 - delta / 2;
-            start2 = id2 - delta / 2;
-        }
-
-        for (var i = 0; i < delta; i++)
-        {
-            error += float.Pow(oscillator[start1 + i] - oscillator[start2 + i], 2) * bias;
-            contrast += oscillator[start1 + i] * Math.Sin(2 * Math.PI * ((double)i / delta));
-        }
-
-        var result = error / Math.Pow(contrast, 2);
-        return delta > upperLimit ? (result, true) : (result, false);
-    }
     
     public List<int> PitchMarkers(Vector<float>? expectedPitch)
     {
