@@ -16,10 +16,23 @@ public static partial class Effects
         var meanAmps = amps.ColumnSums() / amps.RowCount;
         var meanPhases = phases.ColumnSums() / phases.RowCount;
         var meanUnvoiced = unvoiced.ColumnSums() / unvoiced.RowCount;
+        const float eps = 1e-6f;
+        var meanAmpsLog = meanAmps.Map(val => (float)Math.Log(val + eps));
+        var meanUnvoicedLog = meanUnvoiced.Map(val => (float)Math.Log(val + eps));
         
-        amps.MapIndexedInplace((i, j, val) => (val - meanAmps[j]) * multiplier[i] + meanAmps[j]);
+        amps.MapIndexedInplace((i, j, val) =>
+        {
+            var valLog = (float)Math.Log(val + eps);
+            var transformed = (valLog - meanAmpsLog[j]) * multiplier[i] + meanAmpsLog[j];
+            return (float)Math.Max(Math.Exp(transformed) - eps, 0);
+        });
         phases.MapIndexedInplace((i, j, val) => (val - meanPhases[j]) * multiplier[i] + meanPhases[j]);
-        unvoiced.MapIndexedInplace((i, j, val) => (val - meanUnvoiced[j]) * multiplier[i] + meanUnvoiced[j]);
+        unvoiced.MapIndexedInplace((i, j, val) =>
+        {
+            var valLog = (float)Math.Log(val + eps);
+            var transformed = (valLog - meanUnvoicedLog[j]) * multiplier[i] + meanUnvoicedLog[j];
+            return (float)Math.Max(Math.Exp(transformed) - eps, 0);
+        });
         
         audio.SetVoicedAmps(amps);
         audio.SetVoicedPhases(phases);
