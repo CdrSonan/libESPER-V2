@@ -142,15 +142,16 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
                 _graph.Nodes[i].Value = 0;
                 continue;
             }
-            
+
+            var reachable = false;
             for (int j = i - 1; j >= 0; j--)
             {
                 int id1 = _graph.Nodes[j].Id;
                 int id2 = _graph.Nodes[i].Id;
                 int delta = id2 - id1;
-                
-                if (delta > maxEdgeThreshold) break;
+
                 if (delta < lowerLimit) continue;
+                if (delta > maxEdgeThreshold && reachable) break;
                 
                 int start1, start2;
                 if (id1 < delta)
@@ -174,10 +175,15 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
                     float expectedIndex2 = (float)id2 * expectedPitch.Count / oscillator.Count;
                     float ep1 = expectedPitch[(int)expectedIndex1];
                     float ep2 = expectedPitch[(int)expectedIndex2];
-                    if (ep1 == 0.0f || ep2 == 0.0f) continue;
-                    
-                    float ep = (ep1 + ep2) / 2f;
-                    bias += float.Pow(delta - ep, 2) / ep;
+                    if (ep1 != 0.0f && ep2 != 0.0f)
+                    {
+                        bias += delta;
+                    }
+                    else
+                    {
+                        float ep = (ep1 + ep2) / 2f;
+                        bias += float.Pow(delta - ep, 2) / ep;
+                    }
                 }
                 else
                 {
@@ -189,6 +195,7 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
                 start2List.Add(start2);
                 deltaList.Add(delta);
                 biasList.Add(bias);
+                reachable = true;
             }
         }
 
