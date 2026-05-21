@@ -11,6 +11,97 @@ using ILGPU.Runtime.CPU;
 
 namespace libESPER_V2.Transforms.Internal;
 
+internal static class GpuRuntime
+{
+    private static readonly object Sync = new();
+    private static Context? _context;
+    private static Accelerator? _accelerator;
+    private static Action<
+        Index1D,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<double, Stride1D.Dense>>? _kernel;
+
+    public static Accelerator Accelerator
+    {
+        get
+        {
+            EnsureInitialized();
+            return _accelerator!;
+        }
+    }
+
+    public static Action<
+        Index1D,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<int, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<double, Stride1D.Dense>> PitchKernel
+    {
+        get
+        {
+            EnsureInitialized();
+            return _kernel!;
+        }
+    }
+
+    public static object LaunchLock => Sync;
+
+    private static void EnsureInitialized()
+    {
+        if (_kernel != null) return;
+        lock (Sync)
+        {
+            if (_kernel != null) return;
+
+            var ctx = Context.Create(b => b.Cuda().CPU().EnableAlgorithms());
+            Accelerator acc;
+            try
+            {
+                acc = ctx.GetPreferredDevice(preferCPU: false).CreateAccelerator(ctx);
+            }
+            catch
+            {
+                ctx.Dispose();
+                throw;
+            }
+
+            _kernel = acc.LoadAutoGroupedStreamKernel<
+                Index1D,
+                ArrayView1D<int, Stride1D.Dense>,
+                ArrayView1D<int, Stride1D.Dense>,
+                ArrayView1D<int, Stride1D.Dense>,
+                ArrayView1D<float, Stride1D.Dense>,
+                ArrayView1D<float, Stride1D.Dense>,
+                ArrayView1D<double, Stride1D.Dense>>(
+                PitchDetectionGpu.PitchNodeDistanceKernel);
+
+            _context = ctx;
+            _accelerator = acc;
+
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown();
+        }
+    }
+
+    private static void Shutdown()
+    {
+        lock (Sync)
+        {
+            try { _accelerator?.Synchronize(); } catch { /* ignore */ }
+            _accelerator?.Dispose();
+            _context?.Dispose();
+            _accelerator = null;
+            _context = null;
+            _kernel = null;
+        }
+    }
+}
+
 public static class PitchDetectionGpu
 {
     public static void PitchNodeDistanceKernel(
@@ -201,29 +292,26 @@ public class PitchDetection(Vector<float> audio, EsperAudioConfig config, float?
 
         if (pairIndices.Count > 0)
         {
-            using var context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms());
-            var accelerator = context.GetPreferredDevice(preferCPU: false).CreateAccelerator(context);
-            
-            using var start1Buffer = accelerator.Allocate1D(start1List.ToArray());
-            using var start2Buffer = accelerator.Allocate1D(start2List.ToArray());
-            using var deltaBuffer = accelerator.Allocate1D(deltaList.ToArray());
-            using var biasBuffer = accelerator.Allocate1D(biasList.ToArray());
-            using var oscBuffer = accelerator.Allocate1D(oscillator.ToArray());
-            using var resultBuffer = accelerator.Allocate1D<double>(pairIndices.Count);
+            var accelerator = GpuRuntime.Accelerator;
+            var kernel = GpuRuntime.PitchKernel;
 
-            var kernel = accelerator.LoadAutoGroupedStreamKernel<
-                Index1D, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, 
-                ArrayView1D<int, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
-                ArrayView1D<float, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(
-                PitchDetectionGpu.PitchNodeDistanceKernel);
+            double[] results;
+            lock (GpuRuntime.LaunchLock)
+            {
+                using var start1Buffer = accelerator.Allocate1D(start1List.ToArray());
+                using var start2Buffer = accelerator.Allocate1D(start2List.ToArray());
+                using var deltaBuffer  = accelerator.Allocate1D(deltaList.ToArray());
+                using var biasBuffer   = accelerator.Allocate1D(biasList.ToArray());
+                using var oscBuffer    = accelerator.Allocate1D(oscillator.ToArray());
+                using var resultBuffer = accelerator.Allocate1D<double>(pairIndices.Count);
 
-            kernel((int)pairIndices.Count, start1Buffer.View, start2Buffer.View, deltaBuffer.View, 
-                   biasBuffer.View, oscBuffer.View, resultBuffer.View);
-                   
-            accelerator.Synchronize();
-            
-            double[] results = resultBuffer.GetAsArray1D();
-            accelerator.Dispose();
+                kernel(pairIndices.Count,
+                    start1Buffer.View, start2Buffer.View, deltaBuffer.View,
+                    biasBuffer.View, oscBuffer.View, resultBuffer.View);
+
+                accelerator.Synchronize();
+                results = resultBuffer.GetAsArray1D();
+            }
 
             for (int k = 0; k < pairIndices.Count; k++)
             {
