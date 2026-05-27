@@ -60,6 +60,12 @@ public class CompressionTest
             var originalFrame = originalAudio.GetFrames(i);
             for (var j = 0; j < decompressedAudio.Config.FrameSize(); j++)
             {
+                // Skip the constant/0Hz offset index. The Mel scale cannot represent it,
+                // and thus the information is lost during the compression.
+                if (j == 2 * decompressedAudio.Config.NVoiced + 1)
+                {
+                    continue;
+                }
                 Assert.That(frame[j], Is.EqualTo(originalFrame[j]).Within(eps));
             }
         }

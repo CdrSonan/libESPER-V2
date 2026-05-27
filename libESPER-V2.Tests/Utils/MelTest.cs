@@ -68,6 +68,8 @@ public class MelTest
         // Assert
         ClassicAssert.AreEqual(inputVectorLength, x.Count,
             "The output vector does not have the expected length.");
+        // Remove the first element (0Hz offset), since it is not reachable on the (logarithmic) Mel scale
+        x = x.SubVector(1, inputVectorLength - 1);
         ClassicAssert.IsTrue(x.All(value => Math.Abs(value - xValue * numMelBands / inputVectorLength) < 0.01f),
             "The output does not distribute constant values evenly across the input vector.");
     }
