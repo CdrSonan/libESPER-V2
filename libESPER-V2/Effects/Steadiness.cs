@@ -27,6 +27,9 @@ public static partial class Effects
             return (float)Math.Max(Math.Exp(transformed) - eps, 0);
         });
         phases.MapIndexedInplace((i, j, val) => (val - meanPhases[j]) * multiplier[i] + meanPhases[j]);
+        phases.MapInplace(x => x % (2 * (float)Math.PI));
+        phases.MapInplace(x => x < -Math.PI ? x + 2 * (float)Math.PI : x);
+        phases.MapInplace(x => x > Math.PI ? x - 2 * (float)Math.PI : x);
         unvoiced.MapIndexedInplace((i, j, val) =>
         {
             var valLog = (float)Math.Log(val + eps);

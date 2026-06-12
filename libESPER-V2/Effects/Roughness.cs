@@ -18,8 +18,8 @@ public static partial class Effects
         phases.MapIndexedInplace((i, j, val) =>
             roughness[i] > 0 ? val + (float)Normal.Sample(0, 1) * roughness[i] : val * (1 + roughness[i]));
         phases.MapInplace(val => val % (float)(2 * Math.PI));
-        phases.MapInplace(val => val > (float)(2 * Math.PI) ? val - (float)(2 * Math.PI) : val);
-        phases.MapInplace(val => val < -(float)(2 * Math.PI) ? val + (float)(2 * Math.PI) : val);
+        phases.MapInplace(val => val > (float)(Math.PI) ? val - (float)(2 * Math.PI) : val);
+        phases.MapInplace(val => val < -(float)(Math.PI) ? val + (float)(2 * Math.PI) : val);
         audio.SetVoicedPhases(phases);
     }
 }
