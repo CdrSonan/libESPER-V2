@@ -41,7 +41,8 @@ public static partial class Effects
                 Vector<double>.Build.Dense((int)srcSize[i] - audio.Config.NVoiced, 0.0));
             var interpolator = CubicSpline.InterpolatePchipSorted(srcSpace.ToArray(), srcVals.ToArray());
 
-            var result = Vector<float>.Build.Dense(audio.Config.NVoiced, j => (float)interpolator.Interpolate(tgtSpace[j]));
+            var result = Vector<float>.Build.Dense(audio.Config.NVoiced,
+                j => (float)interpolator.Interpolate(tgtSpace[j])).PointwiseMaximum(0);
             var newVolume = result.L2Norm() + 1e-6;
             audio.SetVoicedAmps(i, result * (float)(oldVolumes[i] / newVolume));
         }
