@@ -21,7 +21,10 @@ public class EsperTransformsTest
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Math.Sin(i * 2 * Math.PI / wavelength));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
-        var fwdConfig = new EsperForwardConfig(null, null);
+        var fwdConfig = new EsperForwardConfig
+        {
+            PitchOscillatorDamping = null
+        };;
         var output = EsperTransforms.Forward(waveform, config, fwdConfig);
         Assert.That(output, Is.Not.Null);
     }
@@ -60,7 +63,10 @@ public class EsperTransformsTest
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Math.Cos(i * 2 * Math.PI / wavelength));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
-        var fwdConfig = new EsperForwardConfig(null, null);
+        var fwdConfig = new EsperForwardConfig
+        {
+            PitchOscillatorDamping = null
+        };
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
         var (result, phase) = EsperTransforms.Inverse(esperAudio);
         Assert.That(waveform.Count, Is.EqualTo(result.Count));
@@ -78,7 +84,10 @@ public class EsperTransformsTest
         var waveform = Vector<float>.Build.Dense(length,
             i => (float)Normal.Sample(generator, 0, scale));
         var config = new EsperAudioConfig((ushort)nVoiced, (ushort)nUnvoiced, stepSize);
-        var fwdConfig = new EsperForwardConfig(null, null);
+        var fwdConfig = new EsperForwardConfig
+        {
+            PitchOscillatorDamping = null
+        };
         var esperAudio = EsperTransforms.Forward(waveform, config, fwdConfig);
         esperAudio.SetVoicedAmps(esperAudio.GetVoicedAmps() * 0);
         var (result, phase) = EsperTransforms.Inverse(esperAudio);
