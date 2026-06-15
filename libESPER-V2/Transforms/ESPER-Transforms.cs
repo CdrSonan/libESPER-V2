@@ -5,11 +5,16 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace libESPER_V2.Transforms;
 
-public class EsperForwardConfig(float? pitchOscillatorDamping, Vector<float>? expectedPitch)
+public class EsperForwardConfig
 {
-    public readonly float? PitchOscillatorDamping = pitchOscillatorDamping;
-    public readonly Vector<float>? ExpectedPitch = expectedPitch;
-    public readonly double SmoothingFactor = 0.01;
+    public float? PitchOscillatorDamping { get; init; } = 0.1f;
+    public Vector<float>? ExpectedPitch { get; init; }
+    public double ProcessNoiseVariance { get; init; } = 0.01;
+    public double MeasurementNoiseVariance { get; init; } = 0.1;
+    public double RobustThreshold { get; init; } = 2.5;
+    public double ScaleForgettingFactor { get; init; } = 0.05;
+    public double InitialVarianceMultiplier { get; init; } = 1.0;
+    public double InitialObsStdMultiplier { get; init; } = 0.5;
 }
 
 public static class EsperTransforms
@@ -24,7 +29,15 @@ public static class EsperTransforms
 
         var pitchSyncWave = PitchSyncWave.ConvertTo(x, pitchDetection, (config.NVoiced - 1) * 2);
         var coeffs = PitchSyncFourierCoeffs.ConvertTo(pitchSyncWave);
-        var smoothedCoeffs = PitchSyncFourierCoeffs.SmoothCoeffs(coeffs, forwardConfig.SmoothingFactor);
+        var smoothedCoeffs = PitchSyncFourierCoeffs.SmoothCoeffs(
+            coeffs,
+            forwardConfig.ProcessNoiseVariance,
+            forwardConfig.MeasurementNoiseVariance,
+            forwardConfig.RobustThreshold,
+            forwardConfig.ScaleForgettingFactor,
+            forwardConfig.InitialVarianceMultiplier,
+            forwardConfig.InitialObsStdMultiplier
+            );
         var (voicedAmps, voicedPhases) = VoicedAnalysis.MakeVoicedPart(smoothedCoeffs, pitchDetection, config.StepSize, batches);
         output.SetVoicedAmps(voicedAmps);
         output.SetVoicedPhases(voicedPhases);

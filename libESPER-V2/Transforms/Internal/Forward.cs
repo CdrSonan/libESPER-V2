@@ -42,24 +42,31 @@ internal static class PitchSyncFourierCoeffs
         return result;
     }
 
-    public static Matrix<Complex32> SmoothCoeffs(Matrix<Complex32> fourierCoeffs, double smoothingFactor = 0.01)
+    public static Matrix<Complex32> SmoothCoeffs(
+        Matrix<Complex32> fourierCoeffs,
+        double processNoiseVariance = 0.01,
+        double measurementNoiseVariance = 0.1,
+        double robustThreshold = 2.5,
+        double scaleForgettingFactor = 0.05,
+        double initialVarianceMultiplier = 1,
+        double initialObsStdMultiplier = 0.5)
     {
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount);
-        var filter = new KalmanFilter(smoothingFactor, 0.1);
+        var filter = new KalmanFilter(processNoiseVariance, measurementNoiseVariance, robustThreshold, scaleForgettingFactor);
         for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
         {
             var basisReal = fourierCoeffs.Column(i).Map(val => (double)val.Real);
             var filteredReal = filter.Filter(
                 basisReal,
                 basisReal[0],
-                basisReal.Variance() + 0.0001,
-                basisReal.Variance() * 0.5 + 0.0001);
+                basisReal.Variance() * initialVarianceMultiplier + 0.0001,
+                basisReal.Variance() * initialObsStdMultiplier + 0.0001);
             var basisImag = fourierCoeffs.Column(i).Map(val => (double)val.Imaginary);
             var filteredImag = filter.Filter(
                 basisImag,
                 basisImag[0],
-                basisImag.Variance() + 0.0001,
-                basisImag.Variance() * 0.5 + 0.0001);
+                basisImag.Variance()* initialVarianceMultiplier + 0.0001,
+                basisImag.Variance() * initialObsStdMultiplier + 0.0001);
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
                 smoothedCoeffs[j, i] = new Complex32(filteredReal.Mean[j], filteredImag.Mean[j]);
         }
