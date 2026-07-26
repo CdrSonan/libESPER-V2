@@ -11,6 +11,10 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -29,8 +33,14 @@ jobs:
     - name: Pack
       run: dotnet pack --configuration Release --no-build --output ${{github.workspace}}/packages
 
+    - name: NuGet login (OIDC → temp API key)
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: ${{ secrets.NUGET_USER }}
+
     - name: Publish to NuGet
-      run: dotnet nuget push ${{github.workspace}}/packages/*.nupkg --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push ${{github.workspace}}/packages/*.nupkg --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
     - name: Authenticate to GitHub Packages
       run: dotnet nuget add source --username CdrSonan --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/CdrSonan/index.json"
