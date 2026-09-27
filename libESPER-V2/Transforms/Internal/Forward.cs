@@ -52,21 +52,44 @@ internal static class PitchSyncFourierCoeffs
         double initialObsStdMultiplier = 0.5)
     {
         var smoothedCoeffs = Matrix<Complex32>.Build.Dense(fourierCoeffs.RowCount, fourierCoeffs.ColumnCount);
+
         var filter = new KalmanFilter(processNoiseVariance, measurementNoiseVariance, robustThreshold, scaleForgettingFactor);
         for (var i = 0; i < fourierCoeffs.ColumnCount; i++)
         {
             var basisReal = fourierCoeffs.Column(i).Map(val => (double)val.Real);
+
+            var realWarmupCount = Math.Min(8, basisReal.Count);
+            var realWarmup = basisReal.SubVector(0, realWarmupCount);
+            var realWarmupVariance = realWarmup.Count > 1
+                ? realWarmup.Variance()
+                : 0.0;
+            var realWarmupStd = Math.Sqrt(Math.Max(realWarmupVariance, 0.0));
             var filteredReal = filter.Filter(
                 basisReal,
-                basisReal[0],
-                basisReal.Variance() * initialVarianceMultiplier + 0.0001,
-                basisReal.Variance() * initialObsStdMultiplier + 0.0001);
+                realWarmup.Mean(),
+                Math.Max(
+                    realWarmupVariance * initialVarianceMultiplier,
+                    processNoiseVariance) + 0.0001,
+                Math.Max(
+                    realWarmupStd * initialObsStdMultiplier,
+                    Math.Sqrt(measurementNoiseVariance)) + 0.0001);
             var basisImag = fourierCoeffs.Column(i).Map(val => (double)val.Imaginary);
+            var imagWarmupCount = Math.Min(8, basisImag.Count);
+            var imagWarmup = basisImag.SubVector(0, imagWarmupCount);
+            var imagWarmupVariance = imagWarmup.Count > 1
+                ? imagWarmup.Variance()
+                : 0.0;
+            var imagWarmupStd = Math.Sqrt(Math.Max(imagWarmupVariance, 0.0));
             var filteredImag = filter.Filter(
                 basisImag,
-                basisImag[0],
-                basisImag.Variance()* initialVarianceMultiplier + 0.0001,
-                basisImag.Variance() * initialObsStdMultiplier + 0.0001);
+                imagWarmup.Mean(),
+                Math.Max(
+                    imagWarmupVariance * initialVarianceMultiplier,
+                    processNoiseVariance) + 0.0001,
+                Math.Max(
+                    imagWarmupStd * initialObsStdMultiplier,
+                    Math.Sqrt(measurementNoiseVariance)) + 0.0001);
+
             for (var j = 0; j < fourierCoeffs.RowCount; j++)
                 smoothedCoeffs[j, i] = new Complex32(filteredReal.Mean[j], filteredImag.Mean[j]);
         }
